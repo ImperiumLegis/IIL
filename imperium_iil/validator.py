@@ -22,6 +22,11 @@ def validate(raw: bytes, context: TrustedContext) -> ValidationResult:
     if document.get("iil_version") != "0.1":
         return ValidationResult(context.refs, findings)
 
+    return evaluate_scope(document, context, findings)
+
+
+def evaluate_scope(document: dict, context: TrustedContext, findings: list[Finding]) -> ValidationResult:
+    """Apply shared semantic checks after the caller checks its profile's shape."""
     invalid = {f.pointer for f in findings if f.status == "INVALID"}
 
     def usable(section):
@@ -33,7 +38,8 @@ def validate(raw: bytes, context: TrustedContext) -> ValidationResult:
     def clarify(code, pointer, message):
         findings.append(Finding(code, pointer, message, "NEEDS_CLARIFICATION"))
 
-    if usable("operations") and not document["operations"]:
+    if (usable("operations") and not document["operations"]
+            and not any(f.code == "EMPTY_OPERATIONS" for f in findings)):
         clarify("EMPTY_OPERATIONS", "/operations", "Specify at least one proposed operation.")
     if usable("unresolved") and document["unresolved"]:
         clarify("OPEN_QUESTIONS", "/unresolved", "Resolve the outstanding proposal questions.")

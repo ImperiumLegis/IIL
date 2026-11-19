@@ -1,0 +1,13 @@
+{
+  "format_version": "1",
+  "catalog_ref": {"id": "exact-update-catalog", "version": "1"},
+  "entries": [
+    {
+      "repository_id": "repo-demo",
+      "branch": "main",
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "path": "docs/guide.md",
+      "text": "Run the demo.\n"
+    }
+  ]
+}

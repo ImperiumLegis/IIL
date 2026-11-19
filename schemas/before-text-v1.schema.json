@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IIL before-text inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "catalog_ref", "entries"],
+  "properties": {
+    "format_version": {"const": "1"},
+    "catalog_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"}
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["repository_id", "branch", "revision", "path", "text"],
+        "properties": {
+          "repository_id": {"type": "string"},
+          "branch": {"type": "string"},
+          "revision": {"type": "string"},
+          "path": {"type": "string"},
+          "text": {"type": "string"}
+        }
+      }
+    }
+  }
+}
