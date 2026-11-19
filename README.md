@@ -40,6 +40,19 @@ Run `python -m examples.compare_policies` from the project root using the projec
 
 Compare the [documentation team's trusted settings](fixtures/demo-context.json) with the [release team's settings](fixtures/release-team-context.json). The change uses existing IIL capabilities. Each proposal names the policy and catalog it expects, so the two documents differ only in those references. The demo also submits the original proposal unchanged under the other team's settings and gets `CONTEXT_MISMATCH`. The operator supplies each bundle independently.
 
+## Compare two exact guide edits
+
+The v0.2 `review` command shows what would replace one existing file. From the repository root, run both examples in the project environment.
+
+```console
+python -m imperium_iil review examples/exact-update/guide-a.json
+python -m imperium_iil review examples/exact-update/guide-b.json
+```
+
+Both proposals name the same draft and the same revision of `docs/guide.md`. The first replacement reads `Run step 1 from the repository root.` followed by a newline. The second changes only the digit to `2`. Both return `READY_FOR_REVIEW` with `authority_granted` false. Compare `review.before`, `review.after`, and `review.diff` to see the edit. The CLI displays the final newline as `\n` in JSON.
+
+The one-byte change gives the second review a different `review.fingerprint`. Rerun the first command with unchanged inputs to reproduce the first review. The old text and resource identity come from the bundled [before-text fixture](fixtures/demo-before-text.json) and [exact-update context](fixtures/exact-update-context.json).
+
 ## What the verdict covers
 
 The parser checks size, encoding, duplicate keys and nesting before the schema and semantic checks interpret the proposal. The validator resolves explicit capabilities and exact file identities against the caller's trusted context, then checks eligibility, organizational denials, task exclusions and evidence. Each result records the context versions used.

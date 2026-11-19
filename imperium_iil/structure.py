@@ -5,15 +5,20 @@ import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
 
 from .results import Finding
 
 
-_SCHEMA = json.loads(
-    (Path(__file__).resolve().parents[1] / "schemas" / "iil-v0.1.schema.json")
-    .read_text(encoding="utf-8")
-)
+_SCHEMA_DIR = Path(__file__).resolve().parents[1] / "schemas"
+_SCHEMA = json.loads((_SCHEMA_DIR / "iil-v0.1.schema.json").read_bytes())
 _VALIDATOR = Draft202012Validator(_SCHEMA)
+_EXACT_VALIDATOR = Draft202012Validator(
+    json.loads((_SCHEMA_DIR / "iil-v0.2.schema.json").read_bytes()),
+    registry=Registry().with_resource("urn:imperium:iil:0.1", Resource.from_contents(_SCHEMA)),
+)
+EXACT_TEXT_LIMIT = 16_384
+_EXACT_TEXT = re.compile(r"[\x20-\x7e\t\n]*")
 _FILE_CAPABILITIES = frozenset(
     _SCHEMA["$defs"]["operation"]["if"]["properties"]["capability"]["enum"]
 )
@@ -31,9 +36,13 @@ def valid_path(value: str) -> bool:
     return isinstance(value, str) and 1 <= len(value) <= 512 and bool(_PATH.fullmatch(value))
 
 
-def _errors(document):
+def supported_exact_text(text: str) -> bool:
+    return _EXACT_TEXT.fullmatch(text) is not None
+
+
+def _errors(document, validator):
     """Schema paths contain fixed field names and array indices only."""
-    for error in _VALIDATOR.iter_errors(document):
+    for error in validator.iter_errors(document):
         pointer = "".join(f"/{part}" for part in error.absolute_path)
         if error.validator == "required":
             for key in error.validator_value:
@@ -83,13 +92,50 @@ def _opaque_payload_valid(value):
 
 
 def check_shape(document: dict) -> list[Finding]:
+    return _check_shape(document, "0.1", _VALIDATOR)
+
+
+def check_exact_shape(document: dict) -> list[Finding]:
+    findings = _check_shape(document, "0.2", _EXACT_VALIDATOR)
+    if not isinstance(document, dict) or document.get("iil_version") != "0.2":
+        return findings
+
+    # The exact profile reports malformed fields before unsupported features.
+    invalid = [f for f in findings if f.status == "INVALID"]
+    operations = document.get("operations")
+    if isinstance(operations, list):
+        for index, op in enumerate(operations):
+            replacement = op.get("replacement") if isinstance(op, dict) else None
+            text = replacement.get("text") if isinstance(replacement, dict) else None
+            if not isinstance(text, str):
+                continue
+            pointer = f"/operations/{index}/replacement/text"
+            if len(text.encode("utf-8")) > EXACT_TEXT_LIMIT:
+                invalid.append(Finding("REPLACEMENT_TOO_LARGE", pointer,
+                                       "Replacement exceeds the byte limit.", "INVALID"))
+            elif not supported_exact_text(text):
+                findings.append(_unsupported("UNSUPPORTED_TEXT", pointer))
+    if invalid:
+        return invalid
+    if not operations:
+        findings.append(Finding("EMPTY_OPERATIONS", "/operations", "Specify one proposed update.",
+                                "NEEDS_CLARIFICATION"))
+    elif len(operations) > 1:
+        findings.append(_unsupported("UNSUPPORTED_OPERATION_COUNT", "/operations"))
+    for index, op in enumerate(operations):
+        if op["capability"] in _FILE_CAPABILITIES and op["capability"] != "github.file.update":
+            findings.append(_unsupported("UNSUPPORTED_CAPABILITY", f"/operations/{index}/capability"))
+    return findings
+
+
+def _check_shape(document, expected_version, validator):
     version = document.get("iil_version") if isinstance(document, dict) else None
     if not isinstance(version, str) or len(version) > 64 or not _VERSION.fullmatch(version):
         return [Finding("INVALID_VERSION", "/iil_version", "Expected a version string.", "INVALID")]
-    if version != "0.1":
+    if version != expected_version:
         return [_unsupported("UNSUPPORTED_VERSION", "/iil_version")]
 
-    findings = list(_errors(document))
+    findings = list(_errors(document, validator))
     invalid = {finding.pointer for finding in findings}
     invalid_subtrees = invalid.copy()
     for path in invalid:

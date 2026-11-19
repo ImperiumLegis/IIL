@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:imperium:iil:0.2",
+  "type": "object",
+  "required": ["iil_version", "draft_id", "task", "context", "operations", "restrictions", "unresolved", "evidence_refs"],
+  "properties": {
+    "iil_version": {"const": "0.2"},
+    "draft_id": {"$ref": "urn:imperium:iil:0.1#/$defs/id"},
+    "task": {"$ref": "urn:imperium:iil:0.1#/properties/task"},
+    "context": {"$ref": "urn:imperium:iil:0.1#/properties/context"},
+    "operations": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/operation"}
+    },
+    "restrictions": {"$ref": "urn:imperium:iil:0.1#/properties/restrictions"},
+    "unresolved": {"$ref": "urn:imperium:iil:0.1#/properties/unresolved"},
+    "evidence_refs": {"$ref": "urn:imperium:iil:0.1#/properties/evidence_refs"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "operation": {
+      "type": "object",
+      "required": ["id", "capability", "resource"],
+      "properties": {
+        "id": {"$ref": "urn:imperium:iil:0.1#/$defs/id"},
+        "capability": {"$ref": "urn:imperium:iil:0.1#/$defs/capability"},
+        "resource": {"type": "object"},
+        "replacement": {
+          "type": "object",
+          "required": ["text"],
+          "properties": {"text": {"type": "string"}},
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"$ref": "urn:imperium:iil:0.1#/$defs/operation/if"},
+          "then": {"$ref": "urn:imperium:iil:0.1#/$defs/operation/then"}
+        },
+        {
+          "if": {"required": ["capability"], "properties": {"capability": {"const": "github.file.update"}}},
+          "then": {"required": ["replacement"]}
+        }
+      ]
+    }
+  }
+}

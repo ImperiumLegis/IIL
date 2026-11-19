@@ -6,22 +6,34 @@ from pathlib import Path
 import sys
 
 EXIT_CODES = {"READY_FOR_REVIEW": 0, "NEEDS_CLARIFICATION": 2, "UNSUPPORTED": 3, "INVALID": 4}
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+FIXTURE_LIMIT = 1_048_576
+
+
+def _read(path, limit):
+    with path.open("rb") as stream:
+        return stream.read(limit + 1)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Review an IIL proposal using synthetic demo context.")
-    parser.add_argument("command", choices=["validate"])
+    parser.add_argument("command", choices=["validate", "review"])
     parser.add_argument("proposal", type=Path)
     args = parser.parse_args(argv)
     try:
         from .context import load_demo_context
         from .validator import PROPOSAL_LIMIT, validate
 
-        context = load_demo_context()
-        with args.proposal.open("rb") as stream:
-            result = validate(stream.read(PROPOSAL_LIMIT + 1), context)
-        payload = result.as_dict()
-        code = EXIT_CODES[result.status]
+        proposal = _read(args.proposal, PROPOSAL_LIMIT)
+        if args.command == "review":
+            from .review import review_update
+
+            context = _read(FIXTURES / "exact-update-context.json", FIXTURE_LIMIT)
+            baseline = _read(FIXTURES / "demo-before-text.json", FIXTURE_LIMIT)
+            payload = review_update(proposal, context, baseline)
+        else:
+            payload = validate(proposal, load_demo_context()).as_dict()
+        code = EXIT_CODES[payload["status"]]
     except (OSError, ValueError):
         payload = {"status": "OPERATIONAL_ERROR", "authority_granted": False,
                    "code": "INPUT_OR_CONTEXT_UNAVAILABLE"}
