@@ -1,6 +1,6 @@
 # Imperium Intent Language
 
-Created by [@oneezeero](https://github.com/oneezeero), founder of **Imperium Legis**, a project of **Provenance Supply LLC**. Released under the [MIT License](LICENSE).
+Created by [@oneezeeroo](https://github.com/oneezeeroo), founder of **Imperium Legis**, a project of **Provenance Supply LLC**. Released under the [MIT License](LICENSE).
 
 IIL v0.1 checks a proposed agent task before it reaches an authorization reviewer. Give it a JSON proposal and a trusted resource snapshot. It returns a reproducible verdict with reasons. The CLI runs locally with a synthetic GitHub repository and requires no account or service credentials.
 
