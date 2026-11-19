@@ -60,3 +60,16 @@ The parser checks size, encoding, duplicate keys and nesting before the schema a
 The CLI reads the proposal file supplied by its operator. File paths inside the proposal are identifiers compared against fixture data. The validator never opens those target files or performs GitHub operations. Review readiness does not certify intent fidelity, the live repository, credentials, approval or execution safety. Task Passports, Gateway mediation and the isolated operation broker are future components.
 
 Read the [language specification](docs/IIL_SPEC.md), [threat model](docs/THREAT_MODEL.md), [proposal schema](schemas/iil-v0.1.schema.json), and [synthetic trusted context](fixtures/demo-context.json).
+
+## Confirm one edit in a local terminal
+
+Run the first command and inspect the target, revision, old text, and replacement. Type `APPROVE` to compare that preview with the submitted edit. The second command presents the same preview but submits the one-digit change.
+
+```powershell
+python -m imperium_iil.approval examples/exact-update/guide-a.json examples/exact-update/guide-a.json
+python -m imperium_iil.approval examples/exact-update/guide-a.json examples/exact-update/guide-b.json
+```
+
+The first comparison returns `APPROVAL_MATCHED`. The second returns `FRESH_REVIEW_REQUIRED`. Only a match exits with code zero. Each invocation requires a new confirmation and reads the submitted proposal and trusted fixtures again. All outcomes keep `authority_granted` false.
+
+The operator must control the local terminal, process, and trusted fixtures. A terminal prompt cannot establish a person's identity or protect against software that controls their terminal. The confirmation exists only in memory for this comparison. Authenticated, transferable approval and live execution require a separate trust boundary.
