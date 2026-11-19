@@ -1,0 +1,360 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "iil_version",
+    "draft_id",
+    "task",
+    "context",
+    "operations",
+    "restrictions",
+    "unresolved",
+    "evidence_refs"
+  ],
+  "properties": {
+    "iil_version": {
+      "const": "0.1"
+    },
+    "draft_id": {
+      "$ref": "#/$defs/id"
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "$ref": "#/$defs/prose"
+        }
+      },
+      "additionalProperties": false
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "policy",
+        "catalog",
+        "registry"
+      ],
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/reference"
+        },
+        "catalog": {
+          "$ref": "#/$defs/reference"
+        },
+        "registry": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/operation"
+      }
+    },
+    "restrictions": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/restriction"
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/unresolved"
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*(?![\\s\\S])"
+    },
+    "prose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\ud800-\\udfff]+(?![\\s\\S])"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:[./]|(?![\\s\\S])))[a-zA-Z0-9_.-]{0,99}[a-zA-Z0-9_-](?:/(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:[./]|(?![\\s\\S])))[a-zA-Z0-9_.-]{0,99}[a-zA-Z0-9_-])*(?![\\s\\S])"
+    },
+    "reference": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "required": [
+        "type",
+        "repository_id",
+        "branch",
+        "revision",
+        "path"
+      ],
+      "properties": {
+        "type": {
+          "const": "github.file"
+        },
+        "repository_id": {
+          "$ref": "#/$defs/id"
+        },
+        "branch": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}(?![\\s\\S])"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "id",
+        "capability",
+        "resource"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "capability": {
+          "$ref": "#/$defs/capability"
+        },
+        "resource": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "if": {
+        "required": [
+          "capability"
+        ],
+        "properties": {
+          "capability": {
+            "enum": [
+              "github.file.read",
+              "github.file.update",
+              "github.file.delete"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "resource": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/$defs/capability"
+              }
+            },
+            "if": {
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "github.file"
+                }
+              }
+            },
+            "then": {
+              "$ref": "#/$defs/file"
+            }
+          }
+        }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*(?![\\s\\S])"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "exact_path",
+                  "directory"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/path"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "basename"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100,
+                "pattern": "^(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:[./]|(?![\\s\\S])))[a-zA-Z0-9_.-]{0,99}[a-zA-Z0-9_-](?![\\s\\S])"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "catalog_group"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/id"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "restriction": {
+      "type": "object",
+      "required": [
+        "repository_id",
+        "capabilities",
+        "selector"
+      ],
+      "properties": {
+        "repository_id": {
+          "$ref": "#/$defs/id"
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/capability"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unresolved": {
+      "type": "object",
+      "required": [
+        "id",
+        "code",
+        "question"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "enum": [
+            "missing_scope",
+            "ambiguous_intent",
+            "unverified_classification",
+            "missing_context"
+          ]
+        },
+        "question": {
+          "$ref": "#/$defs/prose"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "iil_version": "0.1",
+  "draft_id": "hidden_effect",
+  "task": {
+    "description": "Read README.md."
+  },
+  "context": {
+    "policy": {
+      "id": "demo-policy",
+      "version": "1"
+    },
+    "catalog": {
+      "id": "demo-catalog",
+      "version": "1"
+    },
+    "registry": {
+      "id": "iil-capabilities",
+      "version": "0.1"
+    }
+  },
+  "operations": [
+    {
+      "id": "op1",
+      "capability": "github.file.read",
+      "resource": {
+        "type": "github.file",
+        "repository_id": "repo-demo",
+        "branch": "main",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "path": "README.md"
+      },
+      "effect": "delete"
+    }
+  ],
+  "restrictions": [],
+  "unresolved": [],
+  "evidence_refs": []
+}

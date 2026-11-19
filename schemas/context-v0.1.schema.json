@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IIL v0.1 trusted context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "refs",
+    "capabilities",
+    "repositories",
+    "snapshots",
+    "evidence",
+    "denials"
+  ],
+  "properties": {
+    "refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "catalog",
+        "registry"
+      ],
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/reference"
+        },
+        "catalog": {
+          "$ref": "#/$defs/reference"
+        },
+        "registry": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/capability"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "supported",
+          "resource_type",
+          "effect"
+        ],
+        "properties": {
+          "supported": {
+            "type": "boolean"
+          },
+          "resource_type": {
+            "$ref": "#/$defs/capability"
+          },
+          "effect": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    "repositories": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "host",
+          "provider_id"
+        ],
+        "properties": {
+          "host": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?![\\s\\S])"
+          },
+          "provider_id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,19}(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    "snapshots": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "$ref": "#/$defs/snapshot"
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "source"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "claimed",
+              "reviewed"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+(?![\\s\\S])"
+          }
+        }
+      }
+    },
+    "denials": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository_id",
+          "capabilities",
+          "selector"
+        ],
+        "properties": {
+          "repository_id": {
+            "$ref": "#/$defs/id"
+          },
+          "capabilities": {
+            "type": "array",
+            "maxItems": 1024,
+            "items": {
+              "$ref": "#/$defs/capability"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "selector": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "value"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "exact_path",
+                  "directory",
+                  "basename",
+                  "catalog_group"
+                ]
+              },
+              "value": {
+                "$ref": "#/$defs/path"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*(?![\\s\\S])"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "capability": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+(?![\\s\\S])"
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository_id",
+        "branch",
+        "revision",
+        "files",
+        "eligible",
+        "groups"
+      ],
+      "properties": {
+        "repository_id": {
+          "$ref": "#/$defs/id"
+        },
+        "branch": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}(?![\\s\\S])"
+        },
+        "files": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/path"
+          },
+          "additionalProperties": {
+            "enum": [
+              "regular",
+              "symlink",
+              "submodule",
+              "alias"
+            ]
+          }
+        },
+        "eligible": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/capability"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 1024,
+            "items": {
+              "$ref": "#/$defs/path"
+            },
+            "uniqueItems": true
+          }
+        },
+        "groups": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "members",
+              "complete",
+              "review_ref"
+            ],
+            "properties": {
+              "members": {
+                "type": "array",
+                "maxItems": 1024,
+                "items": {
+                  "$ref": "#/$defs/path"
+                },
+                "uniqueItems": true
+              },
+              "complete": {
+                "type": "boolean"
+              },
+              "review_ref": {
+                "$ref": "#/$defs/id"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

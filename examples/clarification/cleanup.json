@@ -1,0 +1,31 @@
+{
+  "iil_version": "0.1",
+  "draft_id": "cleanup",
+  "task": {
+    "description": "Clean up my repository."
+  },
+  "context": {
+    "policy": {
+      "id": "demo-policy",
+      "version": "1"
+    },
+    "catalog": {
+      "id": "demo-catalog",
+      "version": "1"
+    },
+    "registry": {
+      "id": "iil-capabilities",
+      "version": "0.1"
+    }
+  },
+  "operations": [],
+  "restrictions": [],
+  "unresolved": [
+    {
+      "id": "q1",
+      "code": "ambiguous_intent",
+      "question": "Which files and changes are intended?"
+    }
+  ],
+  "evidence_refs": []
+}

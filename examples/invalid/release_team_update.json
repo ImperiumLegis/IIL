@@ -1,0 +1,50 @@
+{
+  "iil_version": "0.1",
+  "draft_id": "update_docs",
+  "task": {
+    "description": "Update the documentation guide."
+  },
+  "context": {
+    "policy": {
+      "id": "release-policy",
+      "version": "1"
+    },
+    "catalog": {
+      "id": "release-catalog",
+      "version": "1"
+    },
+    "registry": {
+      "id": "iil-capabilities",
+      "version": "0.1"
+    }
+  },
+  "operations": [
+    {
+      "id": "op1",
+      "capability": "github.file.update",
+      "resource": {
+        "type": "github.file",
+        "repository_id": "repo-demo",
+        "branch": "main",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "path": "docs/guide.md"
+      }
+    }
+  ],
+  "restrictions": [
+    {
+      "repository_id": "repo-demo",
+      "capabilities": [
+        "github.file.read",
+        "github.file.update",
+        "github.file.delete"
+      ],
+      "selector": {
+        "kind": "catalog_group",
+        "value": "authentication"
+      }
+    }
+  ],
+  "unresolved": [],
+  "evidence_refs": []
+}
