@@ -1,12 +1,27 @@
-# Imperium Intent Language
+# Imperium Intent Language (IIL)
 
-Created by [@oneezeeroo](https://github.com/oneezeeroo), founder of **Imperium Legis**, a project of **Provenance Supply LLC**. Released under the [MIT License](LICENSE).
+Imperium Intent Language is the proposal and review core of **Imperium Legis**. It gives an agent a precise way to say what it wants to do, an organization a way to check that request against its rules, and a reviewer a record of the exact edit they approved.
 
-IIL v0.1 checks a proposed agent task before it reaches an authorization reviewer. Give it a JSON proposal and a trusted resource snapshot. It returns a reproducible verdict with reasons. The CLI runs locally with a synthetic GitHub repository and requires no account or service credentials.
+Consider the instruction “Read the README and leave the authentication files alone.” Someone has to decide which repository you meant, which revision of the README to read, and which files count as authentication files. IIL gives those details a place in the proposal or the organization’s resource catalog. If the agent asks for a file in the excluded group, the reviewer can see exactly which rule blocked the request.
 
-## Try a narrow read, then a protected read
+This repository contains the Python library, command-line tools, schemas, and working offline examples. You can use the core independently in your own agent workflow. Within the larger Imperium Legis project, the planned Gateway and isolated operation broker will handle authorization checks at execution time and access to service credentials. The core shipped here stops at review. Every result carries `authority_granted: false`.
 
-From the repository root on Windows with Python 3.12 installed, create the environment. If your interpreter is outside PATH, substitute its absolute path for `py -3.12` (in PowerShell, use `& "path-to-python.exe" -m venv .venv`).
+## How a request moves through IIL
+
+1. **Describe the task.** The agent or its host application submits a JSON proposal. Each file operation identifies an action, repository, branch, revision, and path. A reviewer can compare those fields with the original instruction. “Clean up the docs” alone leaves too much open to infer an operation.
+2. **Check the organization’s rules.** The operator supplies a trusted snapshot of the repository and its policy independently of the proposal. IIL checks the input’s size, encoding, nesting, and duplicate keys, then validates its structure. It looks up the target, checks eligibility, restrictions, denials, and evidence, and returns a verdict with findings and context versions.
+3. **Inspect the edit.** For an exact update to one existing file, the reviewer sees the old text, the complete replacement, and a line diff. IIL computes a fingerprint over the proposal, trusted context, and original-text fixture. Changing even one digit in the proposed text changes that fingerprint.
+4. **Record the decision.** A reviewer can confirm an edit in one terminal session or sign a receipt that another process can verify for 15 minutes. The verifier checks the signature, current reviewer permissions, time window, and exact edit. The decision can travel with the proposal while the signing key stays with the reviewer.
+
+## Using the core in another project
+
+A host application can submit the same proposal format through the CLI or call the Python library directly. For scope checks, load your operator-controlled bundle with `load_context(raw)` and pass it to `validate(proposal_bytes, context)`. For an exact update, call `review_update(proposal_bytes, context_bytes, baseline_bytes)`. Your organization defines its repository catalog, file groups, and policies within the supported schema. The proposal names the context it expects. The operator chooses which context to trust. [Library reference and schemas](docs/IIL_SPEC.md)
+
+The examples model GitHub files at a specific revision. Paths in a proposal are identifiers in the supplied snapshot. Running the CLI reads the input files you select and performs its checks locally, without a GitHub account or service credentials. The operator is responsible for the snapshot’s accuracy. A human reviewer is responsible for judging whether the structured request reflects the user’s intent. [Threat model](docs/THREAT_MODEL.md)
+
+## Set up and run the tests
+
+From the repository root on Windows with Python 3.12 installed, run the following in PowerShell. If Python is outside your PATH, substitute its absolute path for `py -3.12`, for example `& "path-to-python.exe" -m venv .venv`.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -18,65 +33,55 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-On Linux or macOS, use `python3.12 -m venv .venv` and `.venv/bin/python` for the subsequent commands. Installing the pinned packages requires a package index or a local wheel cache. Validation itself is offline. For validation alone install `requirements.txt`.
+On Linux or macOS, create the environment with `python3.12 -m venv .venv` and use `.venv/bin/python` for the subsequent commands. Installation requires a package index or local wheel cache. For the runtime alone, install `requirements.txt`. Later examples use `python` as shorthand for the interpreter in this environment.
 
-The first proposal requests a read of `README.md` and excludes the reviewed authentication group. It returns **READY_FOR_REVIEW**. The second asks for the same kind of read on `src/auth.py`. The catalog places that file in the excluded group, so the result is **INVALID**. Inspect the findings to see which rule applied. Both results contain `"authority_granted": false`.
+### Read the two verdicts
 
-| Example under examples/ | Expected result | What it exercises |
+The first `validate` command asks to read `README.md` and excludes the authentication group. It returns `READY_FOR_REVIEW`. The second asks to read `src/auth.py`, which the catalog places in that group. It returns `INVALID` (exit code 4). That rejection is the expected demo result. Inspect the findings to see why the rule applied.
+
+| Proposal under `examples/` | Expected verdict | What to look for |
 | --- | --- | --- |
-| valid/read_docs.json | READY_FOR_REVIEW | Exact file at a known repository revision |
-| clarification/cleanup.json | NEEDS_CLARIFICATION | No operation inferred from “clean up” |
-| valid/update_docs.json | READY_FOR_REVIEW | Update scope with a reviewed exclusion |
-| unsupported/admin.json | UNSUPPORTED | Unknown capability |
-| invalid/protected.json | INVALID | Protected file requested explicitly |
-| invalid/forged_approval.json | INVALID | Unrecognized approval field |
-| invalid/duplicate_key.json | INVALID | Ambiguous input rejected during parsing |
-| invalid/hidden_effect.json | INVALID | Extra structured effect rejected |
-| valid/prose_mismatch.json | READY_FOR_REVIEW | Human review still needed to detect divergence between prose and structured scope |
+| `valid/read_docs.json` | `READY_FOR_REVIEW` | One specific file at a known revision |
+| `clarification/cleanup.json` | `NEEDS_CLARIFICATION` | An open-ended task with no specified operation |
+| `valid/update_docs.json` | `READY_FOR_REVIEW` | Update scope with an explicit exclusion |
+| `unsupported/admin.json` | `UNSUPPORTED` | An unknown capability |
+| `invalid/protected.json` | `INVALID` | A requested file in an excluded group |
+| `invalid/forged_approval.json` | `INVALID` | An unrecognized approval field |
+| `invalid/duplicate_key.json` | `INVALID` | Two values competing for the same JSON key |
+| `invalid/hidden_effect.json` | `INVALID` | An extra structured effect |
+| `valid/prose_mismatch.json` | `READY_FOR_REVIEW` | A reviewer still needs to catch the mismatch between the prose and the operation |
 
 ## Try the same update at two organizations
 
-Run `python -m examples.compare_policies` from the project root using the project environment. Both teams receive the same request to update `docs/guide.md`. The documentation team can send it for review. The release team places the guide in a reviewed group called `release-docs` and denies updates to that group. Its verdict is `INVALID`, with the reason `POLICY_CONFLICT`.
+Run `python -m examples.compare_policies` in the project environment. Both teams receive a request to update `docs/guide.md`. The documentation team can send the update for review. The release team places the guide in its `release-docs` group and denies updates to that group. Its result is `INVALID` with a `POLICY_CONFLICT` finding.
 
-Compare the [documentation team's trusted settings](fixtures/demo-context.json) with the [release team's settings](fixtures/release-team-context.json). The change uses existing IIL capabilities. Each proposal names the policy and catalog it expects, so the two documents differ only in those references. The demo also submits the original proposal unchanged under the other team's settings and gets `CONTEXT_MISMATCH`. The operator supplies each bundle independently.
+The two proposals differ only in the policy and catalog references they expect. The demo also submits the documentation team’s proposal unchanged under the release team’s settings. IIL reports `CONTEXT_MISMATCH`, making the switch visible to the reviewer. Compare the [documentation team’s settings](fixtures/demo-context.json) and the [release team’s settings](fixtures/release-team-context.json).
 
 ## Compare two exact guide edits
 
-The v0.2 `review` command shows what would replace one existing file. From the repository root, run both examples in the project environment.
+The v0.1 `validate` command checks the scope of an operation. The v0.2 `review` command adds the complete replacement text for a single file update. To see what the reviewer sees, run both proposals.
 
 ```console
 python -m imperium_iil review examples/exact-update/guide-a.json
 python -m imperium_iil review examples/exact-update/guide-b.json
 ```
 
-Both proposals name the same draft and the same revision of `docs/guide.md`. The first replacement reads `Run step 1 from the repository root.` followed by a newline. The second changes only the digit to `2`. Both return `READY_FOR_REVIEW` with `authority_granted` false. Compare `review.before`, `review.after`, and `review.diff` to see the edit. The CLI displays the final newline as `\n` in JSON.
-
-The one-byte change gives the second review a different `review.fingerprint`. Rerun the first command with unchanged inputs to reproduce the first review. The old text and resource identity come from the bundled [before-text fixture](fixtures/demo-before-text.json) and [exact-update context](fixtures/exact-update-context.json).
-
-## What the verdict covers
-
-The parser checks size, encoding, duplicate keys and nesting before the schema and semantic checks interpret the proposal. The validator resolves explicit capabilities and exact file identities against the caller's trusted context, then checks eligibility, organizational denials, task exclusions and evidence. Each result records the context versions used.
-
-The CLI reads the proposal file supplied by its operator. File paths inside the proposal are identifiers compared against fixture data. The validator never opens those target files or performs GitHub operations. Review readiness does not certify intent fidelity, the live repository, credentials, approval or execution safety. Task Passports, Gateway mediation and the isolated operation broker are future components.
-
-Read the [language specification](docs/IIL_SPEC.md), [threat model](docs/THREAT_MODEL.md), [proposal schema](schemas/iil-v0.1.schema.json), and [synthetic trusted context](fixtures/demo-context.json).
+Both propose editing the same revision of `docs/guide.md` under the same draft ID. Guide A says `Run step 1 from the repository root.` followed by a newline. Guide B changes the digit to `2`. Both are eligible for review. Compare `review.before`, `review.after`, and `review.diff` to find the change. JSON displays the final newline as `\n`. The `review.fingerprint` values differ. Rerunning either command with the same inputs reproduces its fingerprint. [Original text](fixtures/demo-before-text.json) · [Exact-update context](fixtures/exact-update-context.json)
 
 ## Confirm one edit in a local terminal
 
-Run the first command and inspect the target, revision, old text, and replacement. Type `APPROVE` to compare that preview with the submitted edit. The second command presents the same preview but submits the one-digit change.
+Run each command and inspect the target, revision, old text, and replacement. Type `APPROVE` to compare the preview with the submitted edit.
 
 ```powershell
 python -m imperium_iil.approval examples/exact-update/guide-a.json examples/exact-update/guide-a.json
 python -m imperium_iil.approval examples/exact-update/guide-a.json examples/exact-update/guide-b.json
 ```
 
-The first comparison returns `APPROVAL_MATCHED`. The second returns `FRESH_REVIEW_REQUIRED`. Only a match exits with code zero. Each invocation requires a new confirmation and reads the submitted proposal and trusted fixtures again. All outcomes keep `authority_granted` false.
-
-The operator must control the local terminal, process, and trusted fixtures. A terminal prompt cannot establish a person's identity or protect against software that controls their terminal. The confirmation exists only in memory for this comparison. Authenticated, transferable approval and live execution require a separate trust boundary.
+The first comparison returns `APPROVAL_MATCHED` and exits with code zero. The second previews guide A and submits guide B, so it returns `FRESH_REVIEW_REQUIRED`. Each command reads the submitted proposal and trusted fixtures again. Confirmation lasts for that comparison. This mode relies on the operator controlling the terminal, process, and fixtures. For an approval tied to an enrolled reviewer’s key, use a signed receipt.
 
 ## Verify a signed review in another process
 
-Install the pinned requirements in the project environment. In a local PowerShell terminal, create a disposable reviewer with a new directory under your user temp folder. Choose a demo passphrase when prompted.
+In a local PowerShell terminal with the pinned requirements installed, create a disposable reviewer in a new directory under your user temp folder. Choose a demo passphrase when prompted.
 
 ```powershell
 $demo = Join-Path ([IO.Path]::GetTempPath()) ("iil-receipt-" + [guid]::NewGuid())
@@ -84,13 +89,19 @@ python -m examples.setup_receipt_demo $demo
 python -m imperium_iil.receipt issue examples/exact-update/guide-a.json --trust "$demo/trust.json" --reviewer demo-reviewer --key "$demo/signer.pem" --out "$demo/receipt.json"
 ```
 
-Unlock the key, inspect the provider repository identity, time window and exact replacement, then type `APPROVE`. Run these commands to check the receipt in separate processes.
+Unlock the key, inspect the repository identity, time window, and replacement, then type `APPROVE`. The signer refuses to overwrite an existing receipt. Now run each verification in a fresh process.
 
 ```powershell
 python -m imperium_iil.receipt verify examples/exact-update/guide-a.json --trust "$demo/trust.json" --receipt "$demo/receipt.json"
 python -m imperium_iil.receipt verify examples/exact-update/guide-b.json --trust "$demo/trust.json" --receipt "$demo/receipt.json"
 ```
 
-Guide A returns `APPROVAL_VERIFIED` during the 15-minute window. Guide B returns `APPROVAL_REJECTED` and exits with code 1. At the expiry second both fail. All results keep `authority_granted` false. The signer refuses to overwrite an existing receipt.
+Guide A returns `APPROVAL_VERIFIED` during the 15-minute window. Guide B returns `APPROVAL_REJECTED` and exits with code 1. At the expiry second, both fail. A verifier can check a receipt more than once while it is valid.
 
-The verifier takes the proposal and receipt from the submitting party. Its operator independently supplies the current organization trust file, trusted context, before-text and clock. The demo uses bundled synthetic context and before-text by default. Operators can select these with `--context` and `--baseline`. The signature proves possession of the enrolled key. The organization is responsible for authenticating reviewers at enrollment, protecting private keys and distributing its current trust configuration. Removing a key or grant takes effect when the verifier receives the updated trust file. A receipt may be verified repeatedly during its validity window. Rollback detection, one-use execution and live GitHub writes are outside this offline check.
+The submitting party supplies the proposal and receipt. The verifier’s operator supplies the current organization trust file, trusted context, original text, and clock. The demo uses synthetic fixtures by default. Use `--context` and `--baseline` to select your own. The signature proves possession of the enrolled key. The organization authenticates reviewers at enrollment, protects signing keys, and distributes the trust file. Removing a key or grant takes effect when the verifier receives the update. Detecting a rolled-back trust file and enforcing one-time execution remain future work.
+
+## Project and license
+
+Created by [@oneezeeroo](https://github.com/oneezeeroo), founder of **Imperium Legis**, a project of **Provenance Supply LLC**. IIL is available under the [MIT License](LICENSE).
+
+[Language specification](docs/IIL_SPEC.md) · [Threat model](docs/THREAT_MODEL.md) · [Scope proposal schema](schemas/iil-v0.1.schema.json) · [Exact-update schema](schemas/iil-v0.2.schema.json) · [Sample trusted context](fixtures/demo-context.json)
