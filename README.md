@@ -73,3 +73,24 @@ python -m imperium_iil.approval examples/exact-update/guide-a.json examples/exac
 The first comparison returns `APPROVAL_MATCHED`. The second returns `FRESH_REVIEW_REQUIRED`. Only a match exits with code zero. Each invocation requires a new confirmation and reads the submitted proposal and trusted fixtures again. All outcomes keep `authority_granted` false.
 
 The operator must control the local terminal, process, and trusted fixtures. A terminal prompt cannot establish a person's identity or protect against software that controls their terminal. The confirmation exists only in memory for this comparison. Authenticated, transferable approval and live execution require a separate trust boundary.
+
+## Verify a signed review in another process
+
+Install the pinned requirements in the project environment. In a local PowerShell terminal, create a disposable reviewer with a new directory under your user temp folder. Choose a demo passphrase when prompted.
+
+```powershell
+$demo = Join-Path ([IO.Path]::GetTempPath()) ("iil-receipt-" + [guid]::NewGuid())
+python -m examples.setup_receipt_demo $demo
+python -m imperium_iil.receipt issue examples/exact-update/guide-a.json --trust "$demo/trust.json" --reviewer demo-reviewer --key "$demo/signer.pem" --out "$demo/receipt.json"
+```
+
+Unlock the key, inspect the provider repository identity, time window and exact replacement, then type `APPROVE`. Run these commands to check the receipt in separate processes.
+
+```powershell
+python -m imperium_iil.receipt verify examples/exact-update/guide-a.json --trust "$demo/trust.json" --receipt "$demo/receipt.json"
+python -m imperium_iil.receipt verify examples/exact-update/guide-b.json --trust "$demo/trust.json" --receipt "$demo/receipt.json"
+```
+
+Guide A returns `APPROVAL_VERIFIED` during the 15-minute window. Guide B returns `APPROVAL_REJECTED` and exits with code 1. At the expiry second both fail. All results keep `authority_granted` false. The signer refuses to overwrite an existing receipt.
+
+The verifier takes the proposal and receipt from the submitting party. Its operator independently supplies the current organization trust file, trusted context, before-text and clock. The demo uses bundled synthetic context and before-text by default. Operators can select these with `--context` and `--baseline`. The signature proves possession of the enrolled key. The organization is responsible for authenticating reviewers at enrollment, protecting private keys and distributing its current trust configuration. Removing a key or grant takes effect when the verifier receives the updated trust file. A receipt may be verified repeatedly during its validity window. Rollback detection, one-use execution and live GitHub writes are outside this offline check.
