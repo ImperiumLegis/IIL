@@ -100,6 +100,17 @@ Guide A returns `APPROVAL_VERIFIED` during the 15-minute window. Guide B returns
 
 The submitting party supplies the proposal and receipt. The verifier’s operator supplies the current organization trust file, trusted context, original text, and clock. The demo uses synthetic fixtures by default. Use `--context` and `--baseline` to select your own. The signature proves possession of the enrolled key. The organization authenticates reviewers at enrollment, protects signing keys, and distributes the trust file. Removing a key or grant takes effect when the verifier receives the update. Detecting a rolled-back trust file and enforcing one-time execution remain future work.
 
+## Compare a tool call with a signed edit
+
+Use the guide A receipt from the walkthrough above while it is valid. The proposal records what the reviewer approved. The separate call file records what the demo tool was asked to do. Run both comparisons in the same PowerShell environment.
+
+```powershell
+python -m imperium_iil.match_call examples/exact-update/guide-a.json --receipt "$demo/receipt.json" --trust "$demo/trust.json" --call examples/tool-calls/guide-a.json
+python -m imperium_iil.match_call examples/exact-update/guide-a.json --receipt "$demo/receipt.json" --trust "$demo/trust.json" --call examples/tool-calls/guide-b.json
+```
+
+The first call requests the signed “Run step 1” edit and returns `TOOL_CALL_MATCHED` (exit 0). The second requests “Run step 2” and returns `TOOL_CALL_REJECTED` (exit 1). The matcher checks the complete synthetic call, including the provider host, repository ID, branch, base revision, case-sensitive path, and replacement text through the final newline. An unknown option also rejects the call. Each result applies to the supplied files and current trust snapshot and carries `authority_granted: false`. Live tool interception and execution remain future Gateway work.
+
 ## Project and license
 
 Created by [@oneezeeroo](https://github.com/oneezeeroo), founder of **Imperium Legis**, a project of **Provenance Supply LLC**. IIL is available under the [MIT License](LICENSE).

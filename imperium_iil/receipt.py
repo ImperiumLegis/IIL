@@ -25,10 +25,12 @@ def now():
     return datetime.now(UTC)
 
 
-def scoped_review(args, reviewer):
-    proposal = _read(args.proposal, PROPOSAL_LIMIT)
-    context = _read(args.context, FIXTURE_LIMIT)
-    baseline = _read(args.baseline, FIXTURE_LIMIT)
+def review_inputs(args):
+    return (_read(args.proposal, PROPOSAL_LIMIT), _read(args.context, FIXTURE_LIMIT),
+            _read(args.baseline, FIXTURE_LIMIT))
+
+
+def scoped_review(proposal, context, baseline, reviewer):
     result = review_update(proposal, context, baseline)
     require(result["status"] == "READY_FOR_REVIEW")
     artifact = result["review"]
@@ -74,7 +76,7 @@ def issue(args):
     trust = current_trust(args)
     reviewer = trust.lookup(args.reviewer)
     require(key.public_key().public_bytes_raw() == reviewer.public_key)
-    artifact, repo = scoped_review(args, reviewer)
+    artifact, repo = scoped_review(*review_inputs(args), reviewer)
     claims = make_claims(trust, args.reviewer, artifact["fingerprint"], now())
     print(json.dumps({"approval": claims, "repository": repo, "review": artifact},
                      ensure_ascii=True, indent=2), file=sys.stderr)
@@ -90,11 +92,17 @@ def issue(args):
     return "APPROVAL_ISSUED"
 
 
-def verify(args):
-    trust = current_trust(args)
-    record = authenticate(_read(args.receipt, RECEIPT_LIMIT), trust, now())
-    artifact, _ = scoped_review(args, trust.lookup(record["reviewer"]))
+def verified_review(proposal, receipt, context, baseline, trust, at):
+    record = authenticate(receipt, trust, at)
+    artifact, repo = scoped_review(proposal, context, baseline, trust.lookup(record["reviewer"]))
     require(record["review_fingerprint"] == artifact["fingerprint"])
+    return record, artifact, repo
+
+
+def verify(args):
+    proposal, context, baseline = review_inputs(args)
+    raw = _read(args.receipt, RECEIPT_LIMIT)
+    record, _, _ = verified_review(proposal, raw, context, baseline, current_trust(args), now())
     check_time(record, now())
     return "APPROVAL_VERIFIED"
 

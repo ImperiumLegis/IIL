@@ -1,0 +1,12 @@
+{
+  "version": "1",
+  "tool": "update_file",
+  "arguments": {
+    "host": "github.example",
+    "provider_id": "1001",
+    "branch": "main",
+    "base_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "path": "docs/guide.md",
+    "text": "Run step 1 from the repository root.\n"
+  }
+}

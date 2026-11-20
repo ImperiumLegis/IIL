@@ -141,3 +141,17 @@ def test_revoked_while_waiting(setup, stage, monkeypatch):
     assert not out.exists()
     if stage == "unlock":
         assert "Run step" not in terminal.getvalue()
+
+
+def test_verified_review_returns_signed_snapshot(setup, monkeypatch):
+    args, trust, private, out = setup
+    assert issue(args, monkeypatch, "APPROVE\n")[0] == 0
+    inputs = (out.read_bytes(), (ROOT / "fixtures/exact-update-context.json").read_bytes(),
+              (ROOT / "fixtures/demo-before-text.json").read_bytes(),
+              receipt.load_trust(trust.read_bytes()), receipt.now())
+    claims, artifact, repo = receipt.verified_review(A.read_bytes(), *inputs)
+    assert claims["review_fingerprint"] == artifact["fingerprint"]
+    assert artifact["after"] == "Run step 1 from the repository root.\n"
+    assert repo == {"host": "github.example", "provider_id": "1001"}
+    with pytest.raises(ValueError):
+        receipt.verified_review(B.read_bytes(), *inputs)
