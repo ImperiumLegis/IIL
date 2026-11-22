@@ -111,6 +111,20 @@ python -m imperium_iil.match_call examples/exact-update/guide-a.json --receipt "
 
 The first call requests the signed “Run step 1” edit and returns `TOOL_CALL_MATCHED` (exit 0). The second requests “Run step 2” and returns `TOOL_CALL_REJECTED` (exit 1). The matcher checks the complete synthetic call, including the provider host, repository ID, branch, base revision, case-sensitive path, and replacement text through the final newline. An unknown option also rejects the call. Each result applies to the supplied files and current trust snapshot and carries `authority_granted: false`. Live tool interception and execution remain future Gateway work.
 
+## Bind an approval to one running requester
+
+Run the disposable two-process example in the project environment:
+
+```powershell
+python -m examples.session_demo
+```
+
+A synthetic reviewer signs a 15-minute receipt for session A. A and B belong to the same demo requester and hold separate in-memory keys. The approved session returns `SESSION_CALL_MATCHED`. B claiming A's identity, a recorded response, and a restarted requester each return `SESSION_CALL_REJECTED`.
+
+For a human-reviewed v2 receipt, use the existing signing walkthrough with `issue-session` in place of `issue` and supply `--sessions PATH --session ID`. The launcher must independently enroll the public session key and retire its binding when the process ends. Inspect the requester, session ID and key fingerprint when confirming. The session verifier requires this receipt version and uses a fresh challenge for each comparison, with up to 60 seconds to respond within the receipt lifetime.
+
+The offline verifier checks possession of the enrolled key and rechecks current reviewer trust, policy, enrollment and expiry before returning a match. The operator controls the launcher, clock, trust sources and private communication channel. Key theft, a live signing relay, runtime interception and execution are outside this check. All outcomes keep `authority_granted` false.
+
 ## Project and license
 
 Created by [@oneezeeroo](https://github.com/oneezeeroo), founder of **Imperium Legis**, a project of **Provenance Supply LLC**. IIL is available under the [MIT License](LICENSE).

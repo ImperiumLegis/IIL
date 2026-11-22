@@ -23,12 +23,16 @@ def match(args):
 
     submitted = parse_update_call(raw_call)
     claims, artifact, repo = verified_review(proposal, receipt, context, baseline, trust, now())
+    compare_call(submitted, artifact, repo)
+    check_time(claims, now())
+
+
+def compare_call(submitted, artifact, repo):
     target = artifact["target"]
     expected = UpdateCall(action=UPDATE, host=repo["host"], provider_id=repo["provider_id"],
                           branch=target["branch"], base_revision=target["revision"],
                           path=target["path"], text=artifact["after"].encode("utf-8"))
     require(submitted == expected)
-    check_time(claims, now())
 
 
 def main(argv=None):

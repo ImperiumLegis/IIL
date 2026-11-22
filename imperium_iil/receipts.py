@@ -7,12 +7,13 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from .parser import parse_bytes
-from .reviewer_trust import binary, fields, matches, require
+from .reviewer_trust import binary, fields, identifier, matches, require
 
 RECEIPT_LIMIT = 8192
 WINDOW = timedelta(minutes=15)
 SIGNED = ("format_version", "organization", "reviewer", "key_fingerprint",
           "review_fingerprint", "issued_at", "expires_at")
+SESSION_SIGNED = (*SIGNED, "requester", "session", "session_key_fingerprint")
 
 
 def timestamp(when):
@@ -36,12 +37,19 @@ def make_claims(trust, reviewer, fingerprint, now):
             "issued_at": timestamp(now), "expires_at": timestamp(now + WINDOW)}
 
 
-def message(claims):
-    chunks = [b"IIL-SIGNED-REVIEW\0"]
-    for field in SIGNED:
-        data = claims[field].encode("utf-8")
+def framed(domain, values):
+    chunks = [domain + b"\0"]
+    for data in values:
         chunks.extend((len(data).to_bytes(8, "big"), data))
     return b"".join(chunks)
+
+
+def message(claims):
+    version = claims["format_version"]
+    require(version in ("1", "2"))
+    domain, names = ((b"IIL-SIGNED-REVIEW", SIGNED) if version == "1"
+                     else (b"IIL-SESSION-REVIEW", SESSION_SIGNED))
+    return framed(domain, (claims[name].encode("utf-8") for name in names))
 
 
 def sign(claims, key):
@@ -49,10 +57,15 @@ def sign(claims, key):
     return {**claims, "signature": signature}
 
 
-def authenticate(raw, trust, now):
+def authenticate(raw, trust, now, *, version="1"):
     record = parse_bytes(raw, limit=RECEIPT_LIMIT)
-    fields(record, (*SIGNED, "signature"))
-    require(record["format_version"] == "1" and record["organization"] == trust.organization)
+    require(version in ("1", "2") and record.get("format_version") == version)
+    fields(record, (*(SIGNED if version == "1" else SESSION_SIGNED), "signature"))
+    require(record["organization"] == trust.organization)
+    if version == "2":
+        identifier(record["requester"])
+        require(matches(record["session"], r"[a-f0-9]{64}"))
+        require(matches(record["session_key_fingerprint"], r"[a-f0-9]{64}"))
     reviewer = trust.lookup(record["reviewer"])
     require(record["key_fingerprint"] == reviewer.fingerprint)
     require(matches(record["review_fingerprint"], r"[a-f0-9]{64}"))
