@@ -1,0 +1,16 @@
+{
+  "action": "support.reply",
+  "version": "1",
+  "permission": "support-reply",
+  "arguments": {
+    "mailbox": "support",
+    "ticket": "T-123",
+    "to": [
+      "alice@example.test"
+    ],
+    "cc": [],
+    "bcc": [],
+    "subject": "Your ticket",
+    "body": "We received your message.\n"
+  }
+}

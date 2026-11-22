@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "entries": [
+    {
+      "action": "support.reply",
+      "version": "1",
+      "sha256": "a7b105f27a22d6091ddb9baaedeb018e00118d574e437a1737f513dfb8193951",
+      "file": "reply.json"
+    }
+  ]
+}

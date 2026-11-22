@@ -1,0 +1,16 @@
+{
+  "tool": "reply_to_ticket",
+  "arguments": {
+    "mailbox": "support",
+    "ticket": "T-123",
+    "to": [
+      "alice@example.test"
+    ],
+    "cc": [],
+    "bcc": [
+      "bob@example.test"
+    ],
+    "subject": "Your ticket",
+    "body": "We received your message.\n"
+  }
+}

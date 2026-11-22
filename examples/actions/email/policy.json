@@ -1,0 +1,31 @@
+{
+  "organization": "demo",
+  "groups": {
+    "contacts": [
+      "alice@example.test",
+      "bob@example.test"
+    ],
+    "mailboxes": [
+      "support"
+    ]
+  },
+  "permissions": {
+    "support-reply": {
+      "action": "support.reply",
+      "version": "1",
+      "sha256": "a7b105f27a22d6091ddb9baaedeb018e00118d574e437a1737f513dfb8193951",
+      "constraints": {
+        "mailbox": "mailboxes",
+        "to": "contacts",
+        "cc": "contacts",
+        "bcc": "contacts"
+      },
+      "requesters": [
+        "agent"
+      ],
+      "reviewers": [
+        "demo-reviewer"
+      ]
+    }
+  }
+}

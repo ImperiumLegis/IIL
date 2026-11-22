@@ -1,0 +1,48 @@
+{
+  "action": "support.reply",
+  "version": "1",
+  "tool": "reply_to_ticket",
+  "fields": {
+    "mailbox": {
+      "type": "string",
+      "min": "1",
+      "max": "256"
+    },
+    "ticket": {
+      "type": "string",
+      "min": "1",
+      "max": "256"
+    },
+    "to": {
+      "type": "list",
+      "min": "1",
+      "max": "256",
+      "least": "1",
+      "most": "16"
+    },
+    "cc": {
+      "type": "list",
+      "min": "1",
+      "max": "256",
+      "least": "0",
+      "most": "16"
+    },
+    "bcc": {
+      "type": "list",
+      "min": "1",
+      "max": "256",
+      "least": "0",
+      "most": "16"
+    },
+    "subject": {
+      "type": "string",
+      "min": "1",
+      "max": "256"
+    },
+    "body": {
+      "type": "string",
+      "min": "1",
+      "max": "8192"
+    }
+  }
+}

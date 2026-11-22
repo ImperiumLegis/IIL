@@ -32,7 +32,15 @@ def check_session(paths, proposal, receipt, call, channel):
     try:
         require(all(type(data) is bytes for data in (proposal, receipt, call)))
         submitted = parse_update_call(call)
-        binding, claims = _check_inputs(paths, proposal, receipt, submitted)
+        return challenge_decision(lambda: _check_inputs(paths, proposal, receipt, submitted),
+                                  receipt, call, channel)
+    except Exception:
+        return {"status": "SESSION_CALL_REJECTED", "authority_granted": False}
+
+
+def challenge_decision(check, receipt, call, channel):
+    try:
+        binding, claims = check()
         presentation = Presentation.for_submission(binding, receipt, call)
         nonce = token_bytes(32)
         start = monotonic()
@@ -44,7 +52,7 @@ def check_session(paths, proposal, receipt, call, channel):
         channel.sendall(presentation.challenge(nonce))
         response = receive(channel, 64, deadline)
         Ed25519PublicKey.from_public_bytes(binding.public_key).verify(response, presentation.message(nonce))
-        current, claims = _check_inputs(paths, proposal, receipt, submitted)
+        current, claims = check()
         require(current == binding)
         check_time(claims, now())
         require(monotonic() < deadline)

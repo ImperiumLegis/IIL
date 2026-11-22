@@ -15,6 +15,8 @@ This repository contains the Python library, command-line tools, schemas, and wo
 
 ## Using the core in another project
 
+Your team can describe its own actions and permissions in JSON. The offline extension workflow reviews the complete proposal, binds approval to one requester session, and compares an independently supplied tool call. The support email example shows how an added BCC recipient invalidates a match. [Adopter guide](docs/DECLARATIVE_ACTIONS.md)
+
 A host application can submit the same proposal format through the CLI or call the Python library directly. For scope checks, load your operator-controlled bundle with `load_context(raw)` and pass it to `validate(proposal_bytes, context)`. For an exact update, call `review_update(proposal_bytes, context_bytes, baseline_bytes)`. Your organization defines its repository catalog, file groups, and policies within the supported schema. The proposal names the context it expects. The operator chooses which context to trust. [Library reference and schemas](docs/IIL_SPEC.md)
 
 The examples model GitHub files at a specific revision. Paths in a proposal are identifiers in the supplied snapshot. Running the CLI reads the input files you select and performs its checks locally, without a GitHub account or service credentials. The operator is responsible for the snapshot’s accuracy. A human reviewer is responsible for judging whether the structured request reflects the user’s intent. [Threat model](docs/THREAT_MODEL.md)
