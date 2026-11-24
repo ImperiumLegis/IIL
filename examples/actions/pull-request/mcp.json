@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "create_pull_request",
+    "arguments": {
+      "repository": "demo/catalog",
+      "base": "main",
+      "head": "docs-guide",
+      "title": "Update guide",
+      "body": "Clarify installation.",
+      "draft": true
+    }
+  }
+}

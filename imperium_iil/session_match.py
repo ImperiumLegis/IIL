@@ -7,10 +7,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from .__main__ import FIXTURE_LIMIT, _read
 from .match_call import compare_call
-from .receipt import now, verified_review
+from .receipt import current_trust, now, verified_review
 from .receipts import check_time, parse_time
 from .requester_session import load_sessions
-from .reviewer_trust import TRUST_LIMIT, load_trust, require
+from .reviewer_trust import TRUST_LIMIT, require
 from .session_proof import Presentation, receive
 from .tool_call import parse_update_call
 
@@ -18,7 +18,7 @@ from .tool_call import parse_update_call
 def _check_inputs(paths, proposal, receipt, submitted):
     context = _read(paths.context, FIXTURE_LIMIT)
     baseline = _read(paths.baseline, FIXTURE_LIMIT)
-    trust = load_trust(_read(paths.trust, TRUST_LIMIT))
+    trust = current_trust(paths)
     sessions = load_sessions(_read(paths.sessions, TRUST_LIMIT), trust.organization)
     claims, artifact, repo = verified_review(proposal, receipt, context, baseline, trust, now(), version="2")
     compare_call(submitted, artifact, repo)

@@ -38,6 +38,17 @@ def test_time_window(signed, offset, valid):
             authenticate(json.dumps(doc).encode(), trust, now)
 
 
+@pytest.mark.parametrize("expires_at", ["2026-01-01T00:14:59Z", "2026-01-01T00:15:01Z"])
+def test_signed_receipt_requires_exact_lifetime(expires_at):
+    key = Ed25519PrivateKey.generate()
+    trust = load_trust(json.dumps(trust_for(key)).encode())
+    claims = make_claims(trust, "alice", "a" * 64, NOW)
+    claims["expires_at"] = expires_at
+    receipt = json.dumps(sign(claims, key)).encode()
+    with pytest.raises(ValueError):
+        authenticate(receipt, trust, NOW + timedelta(seconds=1))
+
+
 @pytest.mark.parametrize("field", ["format_version", "organization", "reviewer", "key_fingerprint",
                                    "review_fingerprint", "issued_at", "expires_at", "signature", "trust"])
 def test_changed_receipt(signed, field):

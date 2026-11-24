@@ -1,0 +1,36 @@
+{
+  "format_version": "2",
+  "action": "github.pull_request.create",
+  "version": "1",
+  "tool": "create_pull_request",
+  "fields": {
+    "repository": {
+      "type": "string",
+      "min": "1",
+      "max": "128"
+    },
+    "base": {
+      "type": "string",
+      "min": "1",
+      "max": "128"
+    },
+    "head": {
+      "type": "string",
+      "min": "1",
+      "max": "128"
+    },
+    "title": {
+      "type": "string",
+      "min": "1",
+      "max": "256"
+    },
+    "body": {
+      "type": "string",
+      "min": "1",
+      "max": "8192"
+    },
+    "draft": {
+      "type": "boolean"
+    }
+  }
+}

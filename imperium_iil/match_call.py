@@ -6,20 +6,20 @@ from pathlib import Path
 import sys
 
 from .__main__ import FIXTURES, FIXTURE_LIMIT, _read
-from .receipt import now, verified_review
+from .receipt import add_trust_arguments, current_trust, now, verified_review
 from .receipts import RECEIPT_LIMIT, check_time
-from .reviewer_trust import TRUST_LIMIT, UPDATE, load_trust, require
+from .review import EXACT_PROPOSAL_LIMIT
+from .reviewer_trust import UPDATE, require
 from .tool_call import CALL_LIMIT, UpdateCall, parse_update_call
-from .validator import PROPOSAL_LIMIT
 
 
 def match(args):
     raw_call = _read(args.call, CALL_LIMIT)
-    proposal = _read(args.proposal, PROPOSAL_LIMIT)
+    proposal = _read(args.proposal, EXACT_PROPOSAL_LIMIT)
     receipt = _read(args.receipt, RECEIPT_LIMIT)
     context = _read(args.context, FIXTURE_LIMIT)
     baseline = _read(args.baseline, FIXTURE_LIMIT)
-    trust = load_trust(_read(args.trust, TRUST_LIMIT))
+    trust = current_trust(args)
 
     submitted = parse_update_call(raw_call)
     claims, artifact, repo = verified_review(proposal, receipt, context, baseline, trust, now())
@@ -31,14 +31,16 @@ def compare_call(submitted, artifact, repo):
     target = artifact["target"]
     expected = UpdateCall(action=UPDATE, host=repo["host"], provider_id=repo["provider_id"],
                           branch=target["branch"], base_revision=target["revision"],
-                          path=target["path"], text=artifact["after"].encode("utf-8"))
+                          path=target["path"], text=artifact["after"].encode("utf-8"),
+                          format_version=artifact["format_version"])
     require(submitted == expected)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("proposal", type=Path)
-    for name in ("call", "receipt", "trust"):
+    add_trust_arguments(parser)
+    for name in ("call", "receipt"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--context", type=Path, default=FIXTURES / "exact-update-context.json")
     parser.add_argument("--baseline", type=Path, default=FIXTURES / "demo-before-text.json")

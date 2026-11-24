@@ -46,7 +46,7 @@ python -m imperium_iil review examples/exact-update/guide-b.json
 
 These proposals differ by a single digit in `replacement.text`. Compare the full strings in `review.before` and `review.after` to see the exact contents, including the final LF. The adjacent `diff` array shows line changes. Each ready result binds its target and a fingerprint to this review while keeping `authority_granted` false. The second command returns a different fingerprint. Repeating either command with identical inputs reproduces its result.
 
-The library entry point `imperium_iil.review.review_update(proposal, context, baseline)` accepts three byte strings and returns a dictionary. The CLI uses fixed, operator-controlled fixtures for the last two inputs. The baseline maps repository ID, branch, revision and path to text. Missing before-text for an otherwise eligible target yields `NEEDS_CLARIFICATION`. Broken trusted input yields a CLI operational error. Every non-ready outcome omits the review object.
+The library entry point `imperium_iil.review.review_update(proposal, context, baseline)` accepts three byte strings and returns a dictionary. The CLI accepts --context and --baseline for the last two inputs and defaults to bundled fixtures. The baseline maps repository ID, branch, revision and path to text. Missing before-text for an otherwise eligible target yields `NEEDS_CLARIFICATION`. Broken trusted input yields a CLI operational error. Every non-ready outcome omits the review object.
 
 The proposal limit is 65,536 bytes. Each trusted fixture has a 1 MiB limit. The decoded replacement and baseline file contents each have a 16,384-byte UTF-8 limit. This profile supports printable ASCII, tab and LF, and preserves the decoded text exactly. An empty replacement proposes clearing the existing file's contents. An update with identical before and after strings can also be ready.
 
@@ -58,3 +58,5 @@ For review format 1, start SHA-256 with ASCII `IIL-EXACT-UPDATE` followed by one
 4. The original before-text fixture bytes.
 
 Render the digest as lowercase hexadecimal. Formatting changes to any JSON input can change the fingerprint. The digest identifies the inputs used for review. Authorization requires a separate decision.
+
+See also the [syntax and evaluation rules](SEMANTICS.md), [extended exact-update profile](EXACT_UTF8.md), and [GitHub snapshot connector](GITHUB_SNAPSHOT.md).

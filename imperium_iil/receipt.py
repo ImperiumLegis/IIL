@@ -16,10 +16,9 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from .__main__ import FIXTURES, FIXTURE_LIMIT, _read
 from .context import load_context
 from .receipts import RECEIPT_LIMIT, authenticate, check_time, make_claims, sign
-from .review import review_update
+from .review import EXACT_PROPOSAL_LIMIT, review_update
 from .requester_session import load_sessions
 from .reviewer_trust import TRUST_LIMIT, load_trust, require
-from .validator import PROPOSAL_LIMIT
 
 
 def now():
@@ -27,7 +26,7 @@ def now():
 
 
 def review_inputs(args):
-    return (_read(args.proposal, PROPOSAL_LIMIT), _read(args.context, FIXTURE_LIMIT),
+    return (_read(args.proposal, EXACT_PROPOSAL_LIMIT), _read(args.context, FIXTURE_LIMIT),
             _read(args.baseline, FIXTURE_LIMIT))
 
 
@@ -69,7 +68,14 @@ def publish(path, record):
 
 
 def current_trust(args):
-    return load_trust(_read(args.trust, TRUST_LIMIT))
+    raw = _read(args.trust, TRUST_LIMIT)
+    return load_trust(raw, expected_sha256=getattr(args, "trust_sha256", None))
+
+
+def add_trust_arguments(parser):
+    parser.add_argument("--trust", required=True, type=Path)
+    parser.add_argument("--trust-sha256", metavar="HEX",
+                        help="SHA-256 of the approved trust file from operator configuration")
 
 
 def issue(args):
@@ -123,7 +129,7 @@ def main(argv=None):
     verifier = commands.add_parser("verify")
     for command in (issuer, session_issuer, verifier):
         command.add_argument("proposal", type=Path)
-        command.add_argument("--trust", required=True, type=Path)
+        add_trust_arguments(command)
         command.add_argument("--context", type=Path, default=FIXTURES / "exact-update-context.json")
         command.add_argument("--baseline", type=Path, default=FIXTURES / "demo-before-text.json")
     for command in (issuer, session_issuer):

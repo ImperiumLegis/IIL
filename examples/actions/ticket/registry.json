@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "entries": [
+    {
+      "action": "support.assign",
+      "version": "1",
+      "sha256": "ad07c2846b92505ac3d8d9b3173267d3ffee54f8ff1b00048fb339c2d3cb1fdd",
+      "file": "assign.json"
+    }
+  ]
+}

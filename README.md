@@ -4,7 +4,9 @@ Imperium Intent Language is the proposal and review core of **Imperium Legis**. 
 
 Consider the instruction “Read the README and leave the authentication files alone.” Someone has to decide which repository you meant, which revision of the README to read, and which files count as authentication files. IIL gives those details a place in the proposal or the organization’s resource catalog. If the agent asks for a file in the excluded group, the reviewer can see exactly which rule blocked the request.
 
-This repository contains the Python library, command-line tools, schemas, and working offline examples. You can use the core independently in your own agent workflow. Within the larger Imperium Legis project, the planned Gateway and isolated operation broker will handle authorization checks at execution time and access to service credentials. The core shipped here stops at review. Every result carries `authority_granted: false`.
+This repository contains the Python library, command-line tools, schemas, and working offline examples. You can use the core independently in your own agent workflow. Within the larger Imperium Legis project, the separate closed-source Gateway handles authorization checks at execution time and access to service credentials. The core shipped here stops at review. Every result carries `authority_granted: false`.
+
+Install from this checkout with `python -m pip install .`. Run `iil validate PROPOSAL --context CONTEXT` or `iil review PROPOSAL --context CONTEXT --baseline BASELINE`. Omitting those options selects the bundled demo inputs. For integrations see the [language semantics](docs/SEMANTICS.md), [UTF-8 review profile](docs/EXACT_UTF8.md), [GitHub snapshot connector](docs/GITHUB_SNAPSHOT.md), and [declarative actions](docs/DECLARATIVE_ACTIONS.md).
 
 ## How a request moves through IIL
 
@@ -35,7 +37,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-On Linux or macOS, create the environment with `python3.12 -m venv .venv` and use `.venv/bin/python` for the subsequent commands. Installation requires a package index or local wheel cache. For the runtime alone, install `requirements.txt`. Later examples use `python` as shorthand for the interpreter in this environment.
+On Linux or macOS, create the environment with `python3.12 -m venv .venv` and use `.venv/bin/python` for the subsequent commands. Installation requires a package index or local wheel cache. For the installed CLI and runtime library, run `python -m pip install .` from the checkout. Later examples use `python` as shorthand for the interpreter in this environment.
 
 ### Read the two verdicts
 
@@ -100,7 +102,7 @@ python -m imperium_iil.receipt verify examples/exact-update/guide-b.json --trust
 
 Guide A returns `APPROVAL_VERIFIED` during the 15-minute window. Guide B returns `APPROVAL_REJECTED` and exits with code 1. At the expiry second, both fail. A verifier can check a receipt more than once while it is valid.
 
-The submitting party supplies the proposal and receipt. The verifier’s operator supplies the current organization trust file, trusted context, original text, and clock. The demo uses synthetic fixtures by default. Use `--context` and `--baseline` to select your own. The signature proves possession of the enrolled key. The organization authenticates reviewers at enrollment, protects signing keys, and distributes the trust file. Removing a key or grant takes effect when the verifier receives the update. Detecting a rolled-back trust file and enforcing one-time execution remain future work.
+The submitting party supplies the proposal and receipt. The verifier’s operator supplies the current organization trust file, trusted context, original text, and clock. The demo uses synthetic fixtures by default. Use `--context` and `--baseline` to select your own. The signature proves possession of the enrolled key. The organization authenticates reviewers at enrollment, protects signing keys, and distributes the trust file. Removing a key or grant takes effect when the verifier receives the update. An operator can reject a restored trust file by configuring an independently protected digest. One-time consumption belongs to the execution broker. [Trust rotation](docs/TRUST.md)
 
 ## Compare a tool call with a signed edit
 
@@ -111,7 +113,7 @@ python -m imperium_iil.match_call examples/exact-update/guide-a.json --receipt "
 python -m imperium_iil.match_call examples/exact-update/guide-a.json --receipt "$demo/receipt.json" --trust "$demo/trust.json" --call examples/tool-calls/guide-b.json
 ```
 
-The first call requests the signed “Run step 1” edit and returns `TOOL_CALL_MATCHED` (exit 0). The second requests “Run step 2” and returns `TOOL_CALL_REJECTED` (exit 1). The matcher checks the complete synthetic call, including the provider host, repository ID, branch, base revision, case-sensitive path, and replacement text through the final newline. An unknown option also rejects the call. Each result applies to the supplied files and current trust snapshot and carries `authority_granted: false`. Live tool interception and execution remain future Gateway work.
+The first call requests the signed “Run step 1” edit and returns `TOOL_CALL_MATCHED` (exit 0). The second requests “Run step 2” and returns `TOOL_CALL_REJECTED` (exit 1). The matcher checks the complete synthetic call, including the provider host, repository ID, branch, base revision, case-sensitive path, and replacement text through the final newline. An unknown option also rejects the call. Each result applies to the supplied files and current trust snapshot and carries `authority_granted: false`. Runtime interception and execution belong to the separately deployed Gateway.
 
 ## Bind an approval to one running requester
 

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from hashlib import sha256
 
 import pytest
 from cryptography.hazmat.primitives import serialization as ser
@@ -89,6 +90,7 @@ def test_transfer_and_revocation(setup, monkeypatch):
     args, trust, private, out = setup
     code, preview = issue(args, monkeypatch, "APPROVE\n")
     assert code == 0 and "Run step 1" in preview
+    assert json.loads(A.read_bytes())["task"]["description"] in preview
     private.unlink()
     def verify(proposal, *extra):
         run = subprocess.run([sys.executable, "-m", "imperium_iil.receipt", "verify", str(proposal),
@@ -115,6 +117,22 @@ def test_transfer_and_revocation(setup, monkeypatch):
             doc["reviewers"] = []
         trust.write_text(json.dumps(doc))
         assert verify(A)[0] != 0
+
+
+def test_current_trust_pin_rejects_restore_of_revoked_grant(setup, monkeypatch):
+    args, trust, _, out = setup
+    original = trust.read_bytes()
+    original_pin = sha256(original).hexdigest()
+    assert issue([*args, "--trust-sha256", original_pin], monkeypatch, "APPROVE\n")[0] == 0
+    verify = ["verify", str(A), "--receipt", str(out), "--trust", str(trust)]
+    assert receipt.main([*verify, "--trust-sha256", original_pin]) == 0
+    revoked = json.loads(original)
+    revoked["reviewers"][0]["grants"] = []
+    trust.write_text(json.dumps(revoked))
+    current_pin = sha256(trust.read_bytes()).hexdigest()
+    assert receipt.main([*verify, "--trust-sha256", current_pin]) == 1
+    trust.write_bytes(original)
+    assert receipt.main([*verify, "--trust-sha256", current_pin]) == 1
 
 
 @pytest.mark.parametrize("stage", ["unlock", "confirm"])

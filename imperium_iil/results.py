@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from . import __version__
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -30,7 +32,7 @@ class ValidationResult:
 
     def as_dict(self):
         return {
-            "validator_version": "0.1.0",
+            "validator_version": __version__,
             "status": self.status,
             "authority_granted": False,
             "context": self.context,

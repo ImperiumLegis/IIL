@@ -71,7 +71,11 @@ def _grant(entry):
     return host, entry["provider_id"], UPDATE
 
 
-def load_trust(raw):
+def load_trust(raw, *, expected_sha256=None):
+    if expected_sha256 is not None:
+        require(type(raw) is bytes and len(raw) <= TRUST_LIMIT)
+        require(matches(expected_sha256, r"[A-Fa-f0-9]{64}"))
+        require(sha256(raw).hexdigest() == expected_sha256.lower())
     doc = parse_bytes(raw, limit=TRUST_LIMIT)
     fields(doc, ("format_version", "organization", "reviewers"))
     organization = identifier(doc["organization"])

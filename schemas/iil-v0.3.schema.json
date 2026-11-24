@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:imperium:iil:0.3",
+  "title": "IIL UTF-8 exact file update",
+  "type": "object",
+  "required": ["iil_version", "draft_id", "task", "context", "operations", "restrictions", "unresolved", "evidence_refs"],
+  "properties": {
+    "iil_version": {"const": "0.3"},
+    "draft_id": {"$ref": "urn:imperium:iil:0.1#/$defs/id"},
+    "task": {"$ref": "urn:imperium:iil:0.1#/properties/task"},
+    "context": {"$ref": "urn:imperium:iil:0.1#/properties/context"},
+    "operations": {"$ref": "urn:imperium:iil:0.2#/properties/operations"},
+    "restrictions": {"$ref": "urn:imperium:iil:0.1#/properties/restrictions"},
+    "unresolved": {"$ref": "urn:imperium:iil:0.1#/properties/unresolved"},
+    "evidence_refs": {"$ref": "urn:imperium:iil:0.1#/properties/evidence_refs"}
+  },
+  "additionalProperties": false
+}

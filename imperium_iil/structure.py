@@ -2,23 +2,33 @@
 
 import json
 import re
-from pathlib import Path
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
+from .resources import resource_dir
 from .results import Finding
 
 
-_SCHEMA_DIR = Path(__file__).resolve().parents[1] / "schemas"
+_SCHEMA_DIR = resource_dir("schemas")
 _SCHEMA = json.loads((_SCHEMA_DIR / "iil-v0.1.schema.json").read_bytes())
 _VALIDATOR = Draft202012Validator(_SCHEMA)
-_EXACT_VALIDATOR = Draft202012Validator(
-    json.loads((_SCHEMA_DIR / "iil-v0.2.schema.json").read_bytes()),
-    registry=Registry().with_resource("urn:imperium:iil:0.1", Resource.from_contents(_SCHEMA)),
-)
+_EXACT_SCHEMA = json.loads((_SCHEMA_DIR / "iil-v0.2.schema.json").read_bytes())
+_REGISTRY = Registry().with_resources((
+    ("urn:imperium:iil:0.1", Resource.from_contents(_SCHEMA)),
+    ("urn:imperium:iil:0.2", Resource.from_contents(_EXACT_SCHEMA)),
+))
+_EXACT_VALIDATOR = Draft202012Validator(_EXACT_SCHEMA, registry=_REGISTRY)
+_UTF8_VALIDATOR = Draft202012Validator(
+    json.loads((_SCHEMA_DIR / "iil-v0.3.schema.json").read_bytes()), registry=_REGISTRY)
 EXACT_TEXT_LIMIT = 16_384
+UTF8_TEXT_LIMIT = 262_144
+UTF8_ENVELOPE_LIMIT = 2 * 1024 * 1024
+UTF8_NODE_LIMIT = 4096
 _EXACT_TEXT = re.compile(r"[\x20-\x7e\t\n]*")
+# C0/C1 except HT/LF/CRLF, plus the Unicode Bidi_Control code points.
+_UNSAFE_UTF8 = re.compile(
+    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]|\r(?!\n)")
 _FILE_CAPABILITIES = frozenset(
     _SCHEMA["$defs"]["operation"]["if"]["properties"]["capability"]["enum"]
 )
@@ -38,6 +48,22 @@ def valid_path(value: str) -> bool:
 
 def supported_exact_text(text: str) -> bool:
     return _EXACT_TEXT.fullmatch(text) is not None
+
+
+def exact_text_error(text: str, version: str) -> str | None:
+    """Check decoded text, preserving its original code points and line endings."""
+    if version not in ("0.2", "0.3"):
+        raise ValueError("Unknown exact update profile")
+    limit = UTF8_TEXT_LIMIT if version == "0.3" else EXACT_TEXT_LIMIT
+    try:
+        size = len(text.encode("utf-8"))
+    except UnicodeEncodeError:
+        return "UNSUPPORTED_TEXT"
+    if size > limit:
+        return "REPLACEMENT_TOO_LARGE"
+    if version == "0.3":
+        return "UNSUPPORTED_TEXT" if _UNSAFE_UTF8.search(text) else None
+    return None if supported_exact_text(text) else "UNSUPPORTED_TEXT"
 
 
 def _errors(document, validator):
@@ -95,9 +121,28 @@ def check_shape(document: dict) -> list[Finding]:
     return _check_shape(document, "0.1", _VALIDATOR)
 
 
+def _bounded_exact_structure(document):
+    pending = [document]
+    count = 1
+    while pending:
+        value = pending.pop()
+        if isinstance(value, (list, dict)):
+            count += len(value)
+            if len(value) > 64 or count > UTF8_NODE_LIMIT:
+                return False
+            pending.extend(value.values() if isinstance(value, dict) else value)
+    return True
+
+
 def check_exact_shape(document: dict) -> list[Finding]:
-    findings = _check_shape(document, "0.2", _EXACT_VALIDATOR)
-    if not isinstance(document, dict) or document.get("iil_version") != "0.2":
+    version = document.get("iil_version") if isinstance(document, dict) else None
+    if version == "0.3":
+        if not _bounded_exact_structure(document):
+            return [Finding("STRUCTURE_LIMIT", "", "Proposal exceeds the structure limit.", "INVALID")]
+        findings = _check_shape(document, "0.3", _UTF8_VALIDATOR)
+    else:
+        findings = _check_shape(document, "0.2", _EXACT_VALIDATOR)
+    if version not in ("0.2", "0.3"):
         return findings
 
     # The exact profile reports malformed fields before unsupported features.
@@ -110,11 +155,12 @@ def check_exact_shape(document: dict) -> list[Finding]:
             if not isinstance(text, str):
                 continue
             pointer = f"/operations/{index}/replacement/text"
-            if len(text.encode("utf-8")) > EXACT_TEXT_LIMIT:
-                invalid.append(Finding("REPLACEMENT_TOO_LARGE", pointer,
+            error = exact_text_error(text, version)
+            if error == "REPLACEMENT_TOO_LARGE":
+                invalid.append(Finding(error, pointer,
                                        "Replacement exceeds the byte limit.", "INVALID"))
-            elif not supported_exact_text(text):
-                findings.append(_unsupported("UNSUPPORTED_TEXT", pointer))
+            elif error:
+                findings.append(_unsupported(error, pointer))
     if invalid:
         return invalid
     if not operations:

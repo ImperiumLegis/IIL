@@ -1,6 +1,7 @@
 """Decode proposal JSON."""
 
 import json
+from decimal import Decimal
 from typing import Never
 
 
@@ -19,6 +20,23 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict:
 
 def _reject_number(_token: str) -> Never:
     raise ParseError("NUMBER_NOT_ALLOWED")
+
+
+def _action_number(token: str) -> int | float:
+    # JSON's scanner has already checked the grammar. Bound work before conversion.
+    if len(token) > 32 or len(token.lower().partition("e")[2].lstrip("+-")) > 2:
+        raise ParseError("NUMBER_LIMIT")
+    value = Decimal(token)
+    if (value.is_zero() and value.is_signed() or abs(value) > 2**53 - 1
+            or value.as_tuple().exponent < -6):
+        raise ParseError("NUMBER_LIMIT")
+    if "." not in token and "e" not in token.lower():
+        return int(token)
+    decoded = float(value)
+    # Refuse any precision loss that would merge distinct inputs in the review display.
+    if Decimal(str(decoded)) != value:
+        raise ParseError("NUMBER_PRECISION")
+    return decoded
 
 
 def _check_unicode(document: dict) -> None:
@@ -61,7 +79,7 @@ def _check_depth(text: str) -> None:
                 raise ParseError("INVALID_JSON")
 
 
-def parse_bytes(raw: bytes, *, limit: int) -> dict:
+def parse_bytes(raw: bytes, *, limit: int, numbers: bool = False) -> dict:
     if len(raw) > limit:
         raise ParseError("INPUT_TOO_LARGE")
     try:
@@ -75,8 +93,8 @@ def parse_bytes(raw: bytes, *, limit: int) -> dict:
         document = json.loads(
             text,
             object_pairs_hook=_unique_object,
-            parse_int=_reject_number,
-            parse_float=_reject_number,
+            parse_int=_action_number if numbers else _reject_number,
+            parse_float=_action_number if numbers else _reject_number,
             parse_constant=_reject_number,
         )
     except json.JSONDecodeError:

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:imperium:before-text:2",
+  "title": "IIL UTF-8 before-text inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "catalog_ref", "entries"],
+  "properties": {
+    "format_version": {"const": "2"},
+    "catalog_ref": {"$ref": "urn:imperium:before-text:1#/properties/catalog_ref"},
+    "entries": {"$ref": "urn:imperium:before-text:1#/properties/entries"}
+  }
+}

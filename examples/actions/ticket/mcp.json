@@ -1,0 +1,20 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "assign_tickets",
+    "arguments": {
+      "tickets": [
+        {
+          "id": "INC-42",
+          "team": "team-east-ops",
+          "hours": 2.5,
+          "priority": "normal",
+          "notify": false,
+          "copies": 1
+        }
+      ]
+    }
+  }
+}

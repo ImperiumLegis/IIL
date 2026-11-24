@@ -13,11 +13,12 @@ from time import monotonic
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.bindings import crypto_core_ed25519_is_valid_point
 
+from .action_call import FORMATS
 from .action_manifest import read
 from .action_receipt import issue, match
-from .receipt import publish
+from .receipt import add_trust_arguments, current_trust, publish
 from .requester_session import Session
-from .reviewer_trust import identifier, load_trust, require
+from .reviewer_trust import identifier, require
 from .session_proof import Presentation, receive, respond
 
 
@@ -46,7 +47,7 @@ def _worker(channel, organization, requester, sid, call):
 
 def run(paths):
     proposal, call = read(paths.proposal), read(paths.call)
-    org = load_trust(read(paths.trust)).organization
+    org = current_trust(paths).organization
     requester = identifier(paths.requester)
     sid = token_hex(32)
     local, remote = socket.socketpair()
@@ -87,9 +88,11 @@ def run(paths):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("proposal", "call", "trust", "policy", "root", "registry", "key"):
+    add_trust_arguments(parser)
+    for name in ("proposal", "call", "policy", "root", "registry", "key"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--call-format", choices=FORMATS, default="iil")
     parser.add_argument("--requester", required=True)
     parser.add_argument("--reviewer", required=True)
     paths = parser.parse_args(argv)

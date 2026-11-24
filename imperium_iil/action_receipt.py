@@ -7,11 +7,12 @@ from hashlib import sha256
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+from .action_call import FORMATS, decode_call
 from .action_manifest import arguments, document, load_catalog, read
 from .action_policy import evaluate
-from .receipt import now, unlock
+from .receipt import current_trust, now, unlock
 from .receipts import SESSION_SIGNED, check_time, framed, make_claims
-from .reviewer_trust import binary, fields, load_trust, require
+from .reviewer_trust import binary, fields, require
 from .session_match import challenge_decision
 
 NAMES = (*SESSION_SIGNED, "action", "version", "manifest", "permission")
@@ -22,18 +23,24 @@ def message(claims):
 
 
 def review(paths, proposal, session):
-    trust = load_trust(read(paths.trust))
+    trust = current_trust(paths)
     require(trust.organization == session.organization)
     reviewer = trust.lookup(paths.reviewer)
     policy = read(paths.policy)
     catalog = load_catalog(paths.registry, paths.root)
     action, permission, values = evaluate(policy, proposal, catalog, trust.organization,
                                           session.requester, paths.reviewer)
-    digest = sha256(framed(b"IIL-ACTION-SNAPSHOT-1", (proposal, action.raw, policy))).hexdigest()
+    call_format = getattr(paths, "call_format", "iil")
+    require(call_format in FORMATS)
+    inputs = (proposal, action.raw, policy)
+    snapshot = (framed(b"IIL-ACTION-SNAPSHOT-1", inputs) if call_format == "iil" else
+                framed(b"IIL-ACTION-SNAPSHOT-2", (*inputs, call_format.encode("ascii"))))
+    digest = sha256(snapshot).hexdigest()
     return trust, reviewer, action, permission, values, digest
 
 
 def issue(paths, proposal, active):
+    require(type(proposal) is bytes)
     key = unlock(paths.key)
     session = active()
     trust, reviewer, action, permission, values, digest = review(paths, proposal, session)
@@ -42,7 +49,12 @@ def issue(paths, proposal, active):
     claims.update(format_version="action-1", action=action.name, version=action.version,
                   manifest=action.pin, permission=permission, **session.claims())
     require(active() == session)
-    print(json.dumps({"claims": claims, "tool": action.tool, "arguments": values}, indent=2), file=sys.stderr)
+    display = {"claims": claims, "call_format": getattr(paths, "call_format", "iil"),
+               "tool": action.tool, "arguments": values}
+    task = document(proposal, numbers=True).get("task")
+    if task is not None:
+        display["task"] = task
+    print(json.dumps(display, indent=2), file=sys.stderr)
     print("Type APPROVE to sign: ", end="", file=sys.stderr, flush=True)
     require(sys.stdin.readline(16).rstrip("\r\n") == "APPROVE")
     require(active() == session)
@@ -69,8 +81,10 @@ def match(paths, proposal, receipt, call, active_session, channel):
         check_time(record, now())
         Ed25519PublicKey.from_public_bytes(reviewer.public_key).verify(binary(record["signature"], 64),
                                                                        message(record))
-        submitted = document(call)
-        fields(submitted, ("tool", "arguments"))
-        require(submitted["tool"] == action.tool and arguments(action, submitted["arguments"]) == values)
+        tool, submitted = decode_call(call, getattr(paths, "call_format", "iil"))
+        require(tool == action.tool)
+        arguments(action, submitted)
+        # Distinguish an integer from a decimal throughout nested objects and arrays.
+        require(json.dumps(submitted, sort_keys=True) == json.dumps(values, sort_keys=True))
         return session, record
     return challenge_decision(check, receipt, call, channel)

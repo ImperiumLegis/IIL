@@ -37,7 +37,7 @@ def test_reject_envelope(case):
     elif case == "tool":
         doc["tool"] = "delete_file"
     elif case == "version":
-        doc["version"] = "2"
+        doc["version"] = "3"
     elif case == "type":
         args["text"] = None
     elif case == "actions":

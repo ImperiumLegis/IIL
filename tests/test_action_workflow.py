@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from hashlib import sha256
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -15,7 +16,8 @@ from test_reviewer_trust import trust_for
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.mark.parametrize("case", ["email", "bcc", "cc", "outsider", "crm", "mailbox", "option"])
+@pytest.mark.parametrize("case", ["email", "bcc", "cc", "outsider", "crm", "mailbox", "option",
+                                  "mcp", "openai-chat", "mcp-extra"])
 def test_external_operator_workflow(tmp_path, case):
     if case == "crm":
         registry, pin = install(tmp_path)
@@ -26,6 +28,15 @@ def test_external_operator_workflow(tmp_path, case):
                  "call":{"tool":"create_lead","arguments":data}}
         for name, value in files.items():
             (tmp_path / (name + ".json")).write_text(json.dumps(value))
+    elif case in ("mcp", "openai-chat", "mcp-extra"):
+        shutil.copytree(ROOT / "examples/actions/ticket", tmp_path, dirs_exist_ok=True)
+        policy = tmp_path / "policy.json"
+        policy.write_text(policy.read_text().replace("demo-reviewer", "alice"))
+        call_format = "mcp" if case == "mcp-extra" else case
+        tool_call = json.loads((tmp_path / (call_format + ".json")).read_bytes())
+        if case == "mcp-extra":
+            tool_call["params"]["arguments"]["tickets"][0]["force"] = True
+        (tmp_path / "call.json").write_text(json.dumps(tool_call))
     else:
         shutil.copytree(ROOT / "examples/actions/email", tmp_path, dirs_exist_ok=True)
         policy = tmp_path / "policy.json"
@@ -60,11 +71,14 @@ def test_external_operator_workflow(tmp_path, case):
     runpy.run_module('imperium_iil.actions',run_name='__main__')
 """)
     args = ["--requester","agent","--reviewer","alice","--root",".","--key","key.pem","--out","signed.json"]
+    if case in ("mcp", "openai-chat", "mcp-extra"):
+        args.extend(["--call-format", call_format])
+    args.extend(["--trust-sha256", sha256((tmp_path / "trust.json").read_bytes()).hexdigest()])
     for name in ("trust","proposal","call","policy","registry"):
         args.extend(["--"+name,name+".json"])
     run = subprocess.run([sys.executable,str(runner),*args],cwd=tmp_path,
                          env={**os.environ,"PYTHONPATH":str(ROOT)},capture_output=True,text=True,timeout=30)
-    success = case in ("email","crm")
+    success = case in ("email","crm","mcp","openai-chat")
     assert run.returncode == (0 if success else 1), run.stderr
     assert json.loads(run.stdout) == {"status":"SESSION_CALL_MATCHED" if success else "SESSION_CALL_REJECTED",
                                       "authority_granted":False}

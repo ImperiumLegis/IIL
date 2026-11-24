@@ -4,7 +4,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
-from pathlib import Path
+from .resources import resource_dir
 from types import MappingProxyType
 
 from jsonschema import Draft202012Validator
@@ -13,7 +13,6 @@ from .parser import ParseError, parse_bytes
 from .structure import valid_path
 
 
-_ROOT = Path(__file__).resolve().parents[1]
 _MAX_BYTES = 1_048_576
 _FILE_CAPABILITIES = {"github.file.read", "github.file.update", "github.file.delete"}
 _PR = "github.pull_request.create"
@@ -25,7 +24,7 @@ class ContextError(ValueError):
 
 @cache
 def _schema():
-    path = _ROOT / "schemas" / "context-v0.1.schema.json"
+    path = resource_dir("schemas") / "context-v0.1.schema.json"
     return Draft202012Validator(json.loads(path.read_bytes()))
 
 
@@ -136,7 +135,7 @@ def load_context(raw: bytes) -> TrustedContext:
 
 def load_demo_context() -> TrustedContext:
     try:
-        with (_ROOT / "fixtures" / "demo-context.json").open("rb") as source:
+        with (resource_dir("fixtures") / "demo-context.json").open("rb") as source:
             raw = source.read(_MAX_BYTES + 1)
     except OSError as exc:
         raise ContextError("Cannot read bundled synthetic context") from exc

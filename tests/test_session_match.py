@@ -1,6 +1,8 @@
 import json
 from argparse import Namespace
 from datetime import timedelta
+from dataclasses import replace
+from hashlib import sha256
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -41,9 +43,10 @@ def comparison(tmp_path):
 
 
 @pytest.mark.parametrize("case", ["match", "wrong_key", "revoked", "removed", "context", "baseline",
-                                  "rotated", "wall_expiry", "monotonic_expiry"])
+                                  "rotated", "wall_expiry", "monotonic_expiry", "trust_pin"])
 def test_final_decision(comparison, case, monkeypatch):
     paths, proposal, receipt, call, pending, key, at = comparison
+    paths.trust_sha256 = sha256(paths.trust.read_bytes()).hexdigest()
     ticks = [0.0]
     wall = [at]
     monkeypatch.setattr(sm, "now", lambda: wall[0])
@@ -54,6 +57,9 @@ def test_final_decision(comparison, case, monkeypatch):
         def sendall(self, challenge):
             self.challenge = challenge
     def read(peer, size, deadline):
+        if case == "trust_pin":
+            with paths.trust.open("ab") as stream:
+                stream.write(b" ")
         if case == "revoked":
             doc = json.loads(paths.trust.read_bytes())
             doc["reviewers"] = []
@@ -102,6 +108,27 @@ def test_expiry_during_final_validation(comparison, monkeypatch):
     monkeypatch.setattr(sm, "_check_inputs", finish)
     assert sm.check_session(paths, proposal, receipt, call, Peer())["status"] == "SESSION_CALL_REJECTED"
     assert len(checks) == 2
+
+
+def test_challenge_rejects_a_different_current_binding_after_valid_response(comparison):
+    _, _, receipt, call, pending, key, _ = comparison
+    active = [pending.binding]
+    claims = json.loads(receipt)
+    # Both snapshots are individually active. The peer proves the first
+    # session and the operator selects a second session while proof is in flight.
+    class Peer:
+        def settimeout(self, timeout):
+            pass
+
+        def sendall(self, challenge):
+            self.response = respond(key, pending, challenge)
+
+        def recv(self, size):
+            active[0] = replace(pending.binding, session="b" * 64)
+            return self.response
+
+    result = sm.challenge_decision(lambda: (active[0], claims), receipt, call, Peer())
+    assert result == {"status": "SESSION_CALL_REJECTED", "authority_granted": False}
 
 
 def test_v1_receipt_cannot_start_challenge(comparison):

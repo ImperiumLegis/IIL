@@ -1,0 +1,35 @@
+{
+  "organization": "demo",
+  "groups": {
+    "priorities": [
+      "low",
+      "normal"
+    ]
+  },
+  "permissions": {
+    "assign-east": {
+      "action": "support.assign",
+      "version": "1",
+      "sha256": "ad07c2846b92505ac3d8d9b3173267d3ffee54f8ff1b00048fb339c2d3cb1fdd",
+      "requesters": [
+        "agent"
+      ],
+      "reviewers": [
+        "demo-reviewer"
+      ],
+      "constraints": {
+        "/tickets/*/team": {
+          "pattern": "team-east-*"
+        },
+        "/tickets/*/hours": {
+          "min": 0,
+          "max": 8
+        },
+        "/tickets/*/priority": "priorities",
+        "/tickets/*/notify": {
+          "equals": false
+        }
+      }
+    }
+  }
+}

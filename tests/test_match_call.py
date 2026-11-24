@@ -1,10 +1,11 @@
 import json
 import subprocess
 import sys
+from hashlib import sha256
 
 import pytest
 
-from imperium_iil import match_call
+from imperium_iil import match_call, receipt
 from imperium_iil.receipts import parse_time
 from test_receipt_cli import A, B, ROOT, issue, setup
 
@@ -36,6 +37,14 @@ def rejected(paths, capsys):
     captured = capsys.readouterr()
     assert json.loads(captured.out) == {"status": "TOOL_CALL_REJECTED", "authority_granted": False}
     assert captured.err == ""
+
+
+def test_exact_call_uses_operator_trust_pin(inputs):
+    args = cli(inputs) + ["--trust-sha256", sha256(inputs["trust"].read_bytes()).hexdigest()]
+    assert match_call.main(args) == 0
+    with inputs["trust"].open("ab") as trust:
+        trust.write(b" ")
+    assert match_call.main(args) == 1
 
 
 @pytest.mark.parametrize("field", ["host", "provider_id", "branch", "base_revision", "path", "text",
@@ -89,6 +98,7 @@ def test_input_snapshot(inputs, change, monkeypatch, capsys):
             path.write_bytes(B.read_bytes())
         return data
     monkeypatch.setattr(match_call, "_read", read)
+    monkeypatch.setattr(receipt, "_read", read)
     rejected(inputs, capsys)
     assert reads == [inputs[k] for k in ("call", "proposal", "receipt", "context", "baseline", "trust")]
 

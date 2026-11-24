@@ -5,8 +5,10 @@ import json
 from pathlib import Path
 import sys
 
+from .resources import resource_dir
+
 EXIT_CODES = {"READY_FOR_REVIEW": 0, "NEEDS_CLARIFICATION": 2, "UNSUPPORTED": 3, "INVALID": 4}
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+FIXTURES = resource_dir("fixtures")
 FIXTURE_LIMIT = 1_048_576
 
 
@@ -16,23 +18,46 @@ def _read(path, limit):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Review an IIL proposal using synthetic demo context.")
-    parser.add_argument("command", choices=["validate", "review"])
+    parser = argparse.ArgumentParser(description="Review an IIL proposal against operator-selected context.")
+    parser.add_argument("command", choices=["validate", "review", "review-set"])
     parser.add_argument("proposal", type=Path)
+    parser.add_argument("--context", type=Path, help="trusted context JSON")
+    parser.add_argument("--baseline", type=Path, help="trusted before-text JSON for review")
+    parser.add_argument("--snapshot", type=Path, help="trusted context and baseline from iil-snapshot")
     args = parser.parse_args(argv)
+    if args.snapshot and (args.context or args.baseline):
+        parser.error("choose the snapshot or separate inputs")
+    if args.command == "validate" and args.baseline:
+        parser.error("--baseline requires review")
+    if args.command != "validate" and bool(args.context) != bool(args.baseline):
+        parser.error("supply both --context and --baseline for a custom review")
     try:
-        from .context import load_demo_context
+        from .context import load_context
         from .validator import PROPOSAL_LIMIT, validate
 
-        proposal = _read(args.proposal, PROPOSAL_LIMIT)
-        if args.command == "review":
-            from .review import review_update
+        from .review import EXACT_PROPOSAL_LIMIT, review_update
+        from .review_set import review_set
+        from .parser import parse_bytes
 
-            context = _read(FIXTURES / "exact-update-context.json", FIXTURE_LIMIT)
-            baseline = _read(FIXTURES / "demo-before-text.json", FIXTURE_LIMIT)
-            payload = review_update(proposal, context, baseline)
+        exact = args.command != "validate"
+        proposal = _read(args.proposal, EXACT_PROPOSAL_LIMIT if exact else PROPOSAL_LIMIT)
+        if args.snapshot:
+            limit = 2 * FIXTURE_LIMIT + 128
+            snapshot = parse_bytes(_read(args.snapshot, limit), limit=limit)
+            if set(snapshot) != {"context", "baseline"}:
+                raise ValueError("Invalid snapshot bundle")
+            context = json.dumps(snapshot["context"]).encode()
+            baseline = json.dumps(snapshot["baseline"]).encode()
         else:
-            payload = validate(proposal, load_demo_context()).as_dict()
+            demo = "exact-update-context.json" if exact else "demo-context.json"
+            context = _read(args.context or FIXTURES / demo, FIXTURE_LIMIT)
+            if exact:
+                baseline = _read(args.baseline or FIXTURES / "demo-before-text.json", FIXTURE_LIMIT)
+        if exact:
+            review = review_update if args.command == "review" else review_set
+            payload = review(proposal, context, baseline)
+        else:
+            payload = validate(proposal, load_context(context)).as_dict()
         code = EXIT_CODES[payload["status"]]
     except (OSError, ValueError):
         payload = {"status": "OPERATIONAL_ERROR", "authority_granted": False,

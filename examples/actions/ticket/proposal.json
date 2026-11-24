@@ -1,0 +1,17 @@
+{
+  "action": "support.assign",
+  "version": "1",
+  "permission": "assign-east",
+  "arguments": {
+    "tickets": [
+      {
+        "id": "INC-42",
+        "team": "team-east-ops",
+        "hours": 2.5,
+        "priority": "normal",
+        "notify": false,
+        "copies": 1
+      }
+    ]
+  }
+}

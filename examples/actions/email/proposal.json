@@ -2,6 +2,7 @@
   "action": "support.reply",
   "version": "1",
   "permission": "support-reply",
+  "task": {"description": "Acknowledge receipt of support ticket T-123."},
   "arguments": {
     "mailbox": "support",
     "ticket": "T-123",

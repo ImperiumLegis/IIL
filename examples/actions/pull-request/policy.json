@@ -1,0 +1,34 @@
+{
+  "organization": "demo",
+  "groups": {
+    "repositories": [
+      "demo/catalog"
+    ],
+    "bases": [
+      "main"
+    ]
+  },
+  "permissions": {
+    "draft-pr": {
+      "action": "github.pull_request.create",
+      "version": "1",
+      "sha256": "7a5186c9631d59aa98ed1841160b386c6b0574fb3a4f5c8d84978465e914dc09",
+      "requesters": [
+        "agent"
+      ],
+      "reviewers": [
+        "demo-reviewer"
+      ],
+      "constraints": {
+        "/repository": "repositories",
+        "/base": "bases",
+        "/head": {
+          "pattern": "docs-*"
+        },
+        "/draft": {
+          "equals": true
+        }
+      }
+    }
+  }
+}

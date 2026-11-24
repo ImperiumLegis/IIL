@@ -6,13 +6,12 @@ from pathlib import Path
 import sys
 
 from .__main__ import FIXTURES, FIXTURE_LIMIT, _read
-from .review import review_update
-from .validator import PROPOSAL_LIMIT
+from .review import EXACT_PROPOSAL_LIMIT, review_update
 
 
 def _review(path):
     return review_update(
-        _read(path, PROPOSAL_LIMIT),
+        _read(path, EXACT_PROPOSAL_LIMIT),
         _read(FIXTURES / "exact-update-context.json", FIXTURE_LIMIT),
         _read(FIXTURES / "demo-before-text.json", FIXTURE_LIMIT),
     )

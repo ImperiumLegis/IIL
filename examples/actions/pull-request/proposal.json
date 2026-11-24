@@ -1,0 +1,13 @@
+{
+  "action": "github.pull_request.create",
+  "version": "1",
+  "permission": "draft-pr",
+  "arguments": {
+    "repository": "demo/catalog",
+    "base": "main",
+    "head": "docs-guide",
+    "title": "Update guide",
+    "body": "Clarify installation.",
+    "draft": true
+  }
+}

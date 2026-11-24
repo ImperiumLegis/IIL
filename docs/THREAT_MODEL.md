@@ -13,4 +13,4 @@ The protected asset in this milestone is the integrity of a proposal review resu
 
 The public CLI diagnostics omit input values and stack traces. Do not submit real secrets. Free-form descriptions can contain sensitive text, and this language has no secret scanner. Anyone who can modify the caller, bypass the future broker, or run code with a service credential can bypass a proposal review entirely.
 
-Before a public release, review the exact export and its history for private planning documents, personal information and secrets; decide what license the organization wants to publish under. Before a production security claim, independently review the code, pin and evaluate dependencies, test real resource resolution, and establish authenticated approval and exclusive runtime mediation.
+The repository is MIT-licensed. Security reports and the current support scope are described in [SECURITY.md](../SECURITY.md). Independent security assessment and production deployment evidence remain open.

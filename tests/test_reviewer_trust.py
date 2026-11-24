@@ -1,5 +1,6 @@
 import base64
 import json
+from hashlib import sha256
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -50,3 +51,13 @@ def test_reject_invalid_public_point():
     doc["reviewers"][0]["public_key"] = base64.b64encode(bytes(32)).decode()
     with pytest.raises(ValueError):
         load_trust(json.dumps(doc).encode())
+
+
+def test_pin_requires_digest_of_immutable_snapshot():
+    raw = json.dumps(trust_for(Ed25519PrivateKey.generate())).encode()
+    pin = sha256(raw).hexdigest()
+    assert load_trust(raw, expected_sha256=pin.upper()).organization == "demo"
+    for snapshot, expected in [(raw + b" ", pin), (raw, ""), (raw, pin + "\n"),
+                               (bytearray(raw), pin)]:
+        with pytest.raises(ValueError):
+            load_trust(snapshot, expected_sha256=expected)
