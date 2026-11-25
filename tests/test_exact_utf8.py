@@ -93,6 +93,31 @@ def test_controls_do_not_produce_a_review(inputs, bad):
     assert result["status"] == "UNSUPPORTED" and "review" not in result
 
 
+@pytest.mark.parametrize("bad", [
+    "x\u200dy", "\u200d", "\u200b", "\u200c", "\u2060", "\ufeff", "\u00ad",
+    "\u034f", "\ufe0f", "A\ufe0f", "\U000e0100", "\U000e0061", "\u0600", "\u2800",
+    "\u00a0", "\u2028", "\u2029", "\u3000", "😀\u200d😀", "👩\u200d💻\u200d💻",
+    "👩\u200d💻\ufe0f", "👩\u200d\u200d💻", "\ufe0e",
+])
+def test_invisible_text_rejected_across_proposal_baseline_and_call(inputs, bad):
+    assert review(inputs, bad)["status"] == "UNSUPPORTED"
+    inputs[2]["format_version"] = "2"
+    inputs[2]["entries"][0]["text"] = bad
+    with pytest.raises(ContextError):
+        review(inputs, "ok")
+    doc = json.loads((ROOT / "examples/tool-calls/guide-a.json").read_bytes())
+    doc["version"] = "2"
+    doc["arguments"]["text"] = bad
+    with pytest.raises(ValueError):
+        parse_update_call(encode(doc))
+
+
+@pytest.mark.parametrize("text", ["x👩🏿‍💻y", "👨‍👩‍👧‍👦", "🏳️‍🌈", "❤️1️⃣", "👩‍💻👨‍💻",
+                                  "☀️", "e\u0301", "עברית", "العربية", "one\ttwo\r\n"])
+def test_unicode_visible_text_and_exact_emoji_sequences(inputs, text):
+    assert review(inputs, text)["review"]["after"] == text
+
+
 def test_dense_line_input_omits_only_optional_diff(inputs):
     text = "\n" * LIMIT
     artifact = review(inputs, text)["review"]

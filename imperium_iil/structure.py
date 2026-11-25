@@ -8,6 +8,7 @@ from referencing import Registry, Resource
 
 from .resources import resource_dir
 from .results import Finding
+from .unicode_review import visible_text
 
 
 _SCHEMA_DIR = resource_dir("schemas")
@@ -26,9 +27,9 @@ UTF8_TEXT_LIMIT = 262_144
 UTF8_ENVELOPE_LIMIT = 2 * 1024 * 1024
 UTF8_NODE_LIMIT = 4096
 _EXACT_TEXT = re.compile(r"[\x20-\x7e\t\n]*")
-# C0/C1 except HT/LF/CRLF, plus the Unicode Bidi_Control code points.
+# C0/C1 except HT/LF/CRLF. The Unicode tables cover format and bidi controls.
 _UNSAFE_UTF8 = re.compile(
-    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]|\r(?!\n)")
+    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]|\r(?!\n)")
 _FILE_CAPABILITIES = frozenset(
     _SCHEMA["$defs"]["operation"]["if"]["properties"]["capability"]["enum"]
 )
@@ -62,7 +63,7 @@ def exact_text_error(text: str, version: str) -> str | None:
     if size > limit:
         return "REPLACEMENT_TOO_LARGE"
     if version == "0.3":
-        return "UNSUPPORTED_TEXT" if _UNSAFE_UTF8.search(text) else None
+        return "UNSUPPORTED_TEXT" if _UNSAFE_UTF8.search(text) or not visible_text(text) else None
     return None if supported_exact_text(text) else "UNSUPPORTED_TEXT"
 
 

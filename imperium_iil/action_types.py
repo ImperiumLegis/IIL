@@ -91,6 +91,6 @@ class TypedField:
             require(type(value) in types and self.bounds[0] <= value <= self.bounds[1])
 
 
-def typed_fields(schema):
-    require(isinstance(schema, dict) and 1 <= len(schema) <= 32)
+def typed_fields(schema, *, allow_empty=False):
+    require(isinstance(schema, dict) and len(schema) <= 32 and (allow_empty or schema))
     return {identifier(key): TypedField.parse(spec) for key, spec in schema.items()}

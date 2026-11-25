@@ -4,6 +4,7 @@ import pytest
 from imperium_iil.standing import assess
 from imperium_iil.action_manifest import load_catalog
 from test_action_manifest import install
+from test_action_v2 import encode, install_v2
 
 ROOT = Path(__file__).resolve().parents[1]/"examples/actions/email"
 
@@ -42,3 +43,30 @@ def test_standing_validates_wire_size_without_inventing_a_larger_proposal(tmp_pa
     assert assess(*inputs, wire, "iil") == {"status": "POLICY_MATCHED", "authority_granted": False}
     with pytest.raises(ValueError):
         assess(*inputs, wire + b" ", "iil")
+
+
+def test_no_argument_mcp_call_checks_empty_manifest_and_progress_metadata(tmp_path):
+    catalog, policy, _ = install_v2(tmp_path, lambda manifest, record: manifest.update(fields={}))
+    policy["permissions"]["assign"]["constraints"] = {}
+    inputs = (encode(policy), catalog, "demo", "agent", "demo-reviewer", "assign")
+    params = {"name": "assign_tickets"}
+    call = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": params}
+    for meta in ({}, {"progressToken": 0}, {"progressToken": 2.5}, {"progressToken": "task-42"}):
+        params["_meta"] = meta
+        assert assess(*inputs, encode(call), "mcp")["status"] == "POLICY_MATCHED"
+    for meta in (None, [], {"progressToken": True}, {"progressToken": {}}, {"unknown": "side effect"}):
+        params["_meta"] = meta
+        with pytest.raises(ValueError):
+            assess(*inputs, encode(call), "mcp")
+    del params["_meta"]
+    params["arguments"] = {"extra": "value"}
+    with pytest.raises(ValueError):
+        assess(*inputs, encode(call), "mcp")
+
+
+def test_mcp_omitted_arguments_still_reject_missing_required_fields(tmp_path):
+    catalog, policy, _ = install_v2(tmp_path)
+    args = (encode(policy), catalog, "demo", "agent", "demo-reviewer", "assign")
+    call = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "assign_tickets"}}
+    with pytest.raises(ValueError):
+        assess(*args, encode(call), "mcp")

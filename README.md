@@ -2,6 +2,8 @@
 
 Imperium Intent Language is the proposal and review core of **Imperium Legis**. It gives an agent a precise way to say what it wants to do, an organization a way to check that request against its rules, and a reviewer a record of the exact edit they approved.
 
+For an exact file edit, the reviewer can inspect the task, the original file at a pinned Git commit, and the complete replacement before signing. IIL fingerprints the proposal, context and baseline together. A verifier can then compare the actual tool call against that approval and require fresh proof from the enrolled requester session. The GitHub connector checks the original file against its Git blob ID. [Exact-edit walkthrough](docs/EXACT_UTF8.md) · [GitHub snapshot connector](docs/GITHUB_SNAPSHOT.md)
+
 Consider the instruction “Read the README and leave the authentication files alone.” Someone has to decide which repository you meant, which revision of the README to read, and which files count as authentication files. IIL gives those details a place in the proposal or the organization’s resource catalog. If the agent asks for a file in the excluded group, the reviewer can see exactly which rule blocked the request.
 
 This repository contains the Python library, command-line tools, schemas, and working offline examples. You can use the core independently in your own agent workflow. Within the larger Imperium Legis project, the separate closed-source Gateway handles authorization checks at execution time and access to service credentials. The core shipped here stops at review. Every result carries `authority_granted: false`.

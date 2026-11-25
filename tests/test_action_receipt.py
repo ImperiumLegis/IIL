@@ -96,6 +96,7 @@ def test_action_signature_framing_vector():
 @pytest.mark.parametrize("adapter,case", [
     ("iil", "ok"), ("mcp", "ok"), ("openai-chat", "ok"),
     ("mcp", "change-adapter"), ("mcp", "method"), ("mcp", "meta"), ("mcp", "bool-id"),
+    ("mcp", "progress"), ("mcp", "changed-progress"),
     ("openai-chat", "duplicates"), ("openai-chat", "extra"), ("openai-chat", "changed-hours"),
     ("iil", "numeric-type"), ("iil", "numeric-equivalent"),
 ])
@@ -123,6 +124,8 @@ def test_typed_adapter_receipt(operator, adapter, case, capsys):
             envelope["method"] = "tools/list"
         if case == "meta":
             envelope["params"]["_meta"] = {"extra": True}
+        if case in ("progress", "changed-progress"):
+            envelope["params"]["_meta"] = {"progressToken": "request-42"}
         if case == "bool-id":
             envelope["id"] = True
     elif paths.call_format == "openai-chat":
@@ -139,6 +142,8 @@ def test_typed_adapter_receipt(operator, adapter, case, capsys):
     if case == "numeric-equivalent":
         call = call.replace(b"8.0", b"8.00")
     pending = Presentation.for_submission(session, receipt, call)
+    if case == "changed-progress":
+        call = call.replace(b"request-42", b"request-43")
 
     class Peer:
         def settimeout(self, timeout):
@@ -149,7 +154,7 @@ def test_typed_adapter_receipt(operator, adapter, case, capsys):
             return self.response
 
     result = ar.match(paths, reviewed, receipt, call, lambda: session, Peer())
-    matched = case in ("ok", "numeric-equivalent")
+    matched = case in ("ok", "numeric-equivalent", "progress")
     assert result == {"status": "SESSION_CALL_MATCHED" if matched else "SESSION_CALL_REJECTED",
                       "authority_granted": False}
 

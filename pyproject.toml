@@ -24,6 +24,7 @@ packages = ["imperium_iil", "imperium_iil.schemas", "imperium_iil.fixtures"]
 "imperium_iil.fixtures" = "fixtures"
 
 [tool.setuptools.package-data]
+"imperium_iil" = ["data/*.txt"]
 "imperium_iil.schemas" = ["*.json"]
 "imperium_iil.fixtures" = ["*.json"]
 

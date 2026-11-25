@@ -46,3 +46,16 @@ def test_set_member_keeps_only_its_repository_restrictions():
     baseline["entries"].append({**baseline["entries"][0], "repository_id":"repo-two"})
     result = review_set(*(json.dumps(x).encode() for x in (doc, context, baseline)))
     assert result["status"] == "READY_FOR_REVIEW" and len(result["review"]["edits"]) == 2
+
+def test_missing_second_baseline_suppresses_first_review():
+    doc = json.loads((ROOT/"examples/exact-update/guide-a.json").read_bytes())
+    context = json.loads((ROOT/"fixtures/exact-update-context.json").read_bytes())
+    baseline = (ROOT/"fixtures/demo-before-text.json").read_bytes()
+    doc["iil_version"] = "set-1"
+    op = doc["operations"][0]
+    doc["operations"].append({**op, "id":"op2", "resource":{**op["resource"],"path":"README.md"}})
+    context["snapshots"][0]["eligible"]["github.file.update"].append("README.md")
+    result = review_set(json.dumps(doc).encode(), json.dumps(context).encode(), baseline)
+    assert result["status"] == "NEEDS_CLARIFICATION" and "review" not in result
+    assert [(f["code"], f["pointer"]) for f in result["findings"]] == [
+        ("MISSING_BASE_TEXT", "/operations/1/resource")]

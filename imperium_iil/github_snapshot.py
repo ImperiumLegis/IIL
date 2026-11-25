@@ -1,10 +1,11 @@
-"""Resolve a reviewed public GitHub revision to offline context and before-text."""
+"""Resolve a reviewed GitHub revision to offline context and before-text."""
 
 import argparse
 from base64 import b64decode
 from hashlib import sha1
 from http.client import HTTPSConnection
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -20,11 +21,14 @@ from .structure import valid_path
 MAX_RESPONSE = 4 * 1024 * 1024
 
 
-def get_json(path):
+def get_json(path, *, token=None):
+    headers = {"User-Agent": "imperium-iil-snapshot", "Accept": "application/vnd.github+json"}
+    if token is not None:
+        require(isinstance(token, str) and re.fullmatch(r"[!-~]{1,4096}", token))
+        headers["Authorization"] = "Bearer " + token
     conn = HTTPSConnection("api.github.com", timeout=10)
     try:
-        conn.request("GET", path, headers={"User-Agent": "imperium-iil-snapshot",
-                                           "Accept": "application/vnd.github+json"})
+        conn.request("GET", path, headers=headers)
         response = conn.getresponse()
         require(response.status == 200)
         raw = response.read(MAX_RESPONSE + 1)
@@ -55,13 +59,21 @@ def resolve(raw, repository, path, *, baseline_format="1", get=get_json):
     kinds = {("blob","100644"):"regular", ("blob","100755"):"regular",
              ("blob","120000"):"symlink", ("commit","160000"):"submodule"}
     files = {}
+    seen = set()
     blob = None
     for entry in listing["tree"]:
-        if (entry["type"], entry["mode"]) == ("tree", "040000"):
-            continue
         name = entry["path"]
-        require(valid_path(name) and name not in files and (entry["type"],entry["mode"]) in kinds)
-        files[name] = kinds[entry["type"],entry["mode"]]
+        require(isinstance(name, str) and "\x00" not in name and name not in seen
+                and all(component not in ("", ".", "..") for component in name.split("/")))
+        seen.add(name)
+        kind = entry["type"], entry["mode"]
+        if kind == ("tree", "040000"):
+            continue
+        require(kind in kinds)
+        # Preserve exact Git paths. Other names have no representation in IIL.
+        if not valid_path(name):
+            continue
+        files[name] = kinds[kind]
         if name == path:
             blob = entry["sha"]
     snapshot["files"] = files
@@ -86,10 +98,14 @@ def main(argv=None):
     parser.add_argument("--repository", required=True)
     parser.add_argument("--path", required=True)
     parser.add_argument("--baseline-format", choices=["1","2"], default="1")
+    parser.add_argument("--authenticated", action="store_true",
+                        help="use the operator-supplied IIL_GITHUB_TOKEN for read requests")
     args = parser.parse_args(argv)
     try:
+        token = os.environ["IIL_GITHUB_TOKEN"] if args.authenticated else None
         with args.context.open("rb") as stream:
-            bundle = resolve(stream.read(1048577), args.repository, args.path, baseline_format=args.baseline_format)
+            bundle = resolve(stream.read(1048577), args.repository, args.path, baseline_format=args.baseline_format,
+                             get=lambda path: get_json(path, token=token))
     except Exception:
         print("Snapshot unavailable. Check the operator policy, pinned revision and provider response.", file=sys.stderr)
         return 1

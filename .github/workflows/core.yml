@@ -29,3 +29,23 @@ jobs:
         with:
           name: imperium-iil-distributions
           path: dist/
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: core
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: imperium-iil-distributions
+          path: dist/
+      - name: Publish verified distributions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          version=$(python -c 'from imperium_iil import __version__; print(__version__)')
+          test "$GITHUB_REF_NAME" = "v$version"
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.whl --verify-tag --title "IIL $version" --notes-file CHANGELOG.md

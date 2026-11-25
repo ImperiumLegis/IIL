@@ -17,8 +17,17 @@ def decode_call(raw, call_format):
         if type(obj["id"]) is not int:
             identifier(obj["id"])
         params = obj["params"]
-        fields(params, ("name", "arguments"))
-        return params["name"], params["arguments"]
+        require(isinstance(params, dict) and "name" in params and params.keys() <= {"name", "arguments", "_meta"})
+        if "_meta" in params:
+            meta = params["_meta"]
+            require(isinstance(meta, dict) and meta.keys() <= {"progressToken"})
+            if "progressToken" in meta:
+                token = meta["progressToken"]
+                require(type(token) in (int, float) or
+                        (isinstance(token, str) and 1 <= len(token) <= 256 and token.isascii() and token.isprintable()))
+        args = params.get("arguments", {})
+        require(isinstance(args, dict))
+        return params["name"], args
     require(call_format == "openai-chat")
     fields(obj, ("id", "type", "function"))
     identifier(obj["id"])

@@ -11,6 +11,8 @@ Run from a clean checkout of the candidate commit using Python 3.12. Install wit
 - Put a protected file second in an otherwise eligible update set. The result must withhold all before-text.
 - Present an otherwise valid provider response with a moved branch, truncated tree, or mismatched Git blob hash. Snapshot resolution must fail.
 
+The v0.3.0 regression run independently disabled six guards in temporary copies. Each corresponding test failed with its guard disabled: same-length blob digest mismatch, manifest numeric range, boolean equality constraint, safe integer magnitude, loss of decimal precision, and suppression of a multi-edit review when its second baseline is missing. The unchanged code passes these cases. The tests are in `tests/test_github_snapshot.py`, `tests/test_review_guards.py`, and `tests/test_review_set.py`.
+
 Record the commit, tool versions, tests performed, findings, and reviewer affiliation. Publish an assessment only with the reviewer's approval. The current candidate has local engineering verification; the maintainers have yet to publish an independent assessment or a third-party production deployment.
 
 ## Publishing

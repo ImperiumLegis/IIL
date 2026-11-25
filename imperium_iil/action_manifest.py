@@ -93,9 +93,11 @@ def load_catalog(registry, root):
         tool = identifier(doc["tool"])
         require(tool not in tools)
         schema = doc["fields"]
-        require(isinstance(schema, dict) and 1 <= len(schema) <= 32)
-        specs = (typed_fields(schema) if format_version == "2"
-                 else {identifier(k): Field.parse(v) for k, v in schema.items()})
+        if format_version == "2":
+            specs = typed_fields(schema, allow_empty=True)
+        else:
+            require(isinstance(schema, dict) and 1 <= len(schema) <= 32)
+            specs = {identifier(k): Field.parse(v) for k, v in schema.items()}
         catalog[name, version] = Action(name, version, tool, digest, raw, specs, format_version)
         files.add(filename.lower())
         tools.add(tool)

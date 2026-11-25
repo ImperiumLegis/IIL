@@ -1,5 +1,6 @@
 """Evaluate one named action permission for both enrolled participants."""
 
+from .action_allowlist import email_allowlist, path_allowlist
 from .action_manifest import arguments, document
 from .action_types import TypedField, numeric_range, pattern
 from .reviewer_trust import fields, identifier, require
@@ -26,6 +27,11 @@ def typed_constraint(action, selector, rule, groups):
         require(field.kind in ("string", "enum") and rule in groups)
         return path, groups[rule].__contains__
     require(isinstance(rule, dict))
+    for key, compile_rule in (("email_allowlist", email_allowlist), ("path_allowlist", path_allowlist)):
+        if key in rule:
+            fields(rule, (key,))
+            require(field.kind in ("string", "enum"))
+            return path, compile_rule(rule[key])
     if "pattern" in rule:
         fields(rule, ("pattern",))
         require(field.kind in ("string", "enum"))
